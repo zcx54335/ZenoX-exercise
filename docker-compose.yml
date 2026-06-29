@@ -1,0 +1,12 @@
+services:
+  zenox-exercise:
+    build: .
+    container_name: zenox-exercise
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    restart: unless-stopped

@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ZenoX 题库工作台</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main id="login" class="login-shell hidden">
+      <section class="login-panel">
+        <div>
+          <p class="eyebrow">ZenoX Exercise</p>
+          <h1>家教题库工作台</h1>
+          <p class="muted">整理题目、分类、生成作业、记录错题，一条线完成。</p>
+        </div>
+        <form id="loginForm" class="stack">
+          <label>账号<input name="username" autocomplete="username" value="admin" /></label>
+          <label>密码<input name="password" type="password" autocomplete="current-password" placeholder="请输入密码" /></label>
+          <button class="primary" type="submit">登录</button>
+          <p id="loginError" class="error"></p>
+        </form>
+      </section>
+    </main>
+
+    <main id="app" class="app-shell hidden">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="logo">Z</div>
+          <div>
+            <strong>ZenoX</strong>
+            <span>题库工作台</span>
+          </div>
+        </div>
+        <nav class="nav">
+          <button data-view="dashboard" class="active">总览</button>
+          <button data-view="import">资料整理</button>
+          <button data-view="bank">题库</button>
+          <button data-view="assignments">作业生成</button>
+          <button data-view="students">学生错题</button>
+          <button data-view="settings">部署设置</button>
+        </nav>
+        <button id="logoutBtn" class="ghost sidebar-logout">退出登录</button>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="viewEyebrow">今日工作</p>
+            <h2 id="viewTitle">总览</h2>
+          </div>
+          <div class="top-actions">
+            <button id="refreshBtn" class="ghost">刷新</button>
+            <button id="quickPrintBtn" class="primary">打印当前作业</button>
+          </div>
+        </header>
+
+        <section id="dashboard" class="view active">
+          <div class="metrics">
+            <article><span id="metricQuestions">0</span><p>题库题目</p></article>
+            <article><span id="metricStudents">0</span><p>学生档案</p></article>
+            <article><span id="metricAssignments">0</span><p>已生成作业</p></article>
+            <article><span id="metricMistakes">0</span><p>错题记录</p></article>
+          </div>
+          <div class="two-col">
+            <section class="panel">
+              <div class="section-head">
+                <h3>最近动态</h3>
+              </div>
+              <div id="activityList" class="activity"></div>
+            </section>
+            <section class="panel">
+              <div class="section-head">
+                <h3>优先工作流</h3>
+              </div>
+              <div class="workflow">
+                <button data-jump="import">1. 上传 PDF / 图片并拆题</button>
+                <button data-jump="bank">2. 给题目补标签和难度</button>
+                <button data-jump="assignments">3. 选择题目生成作业</button>
+                <button data-jump="students">4. 记录学生错题原因</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="import" class="view">
+          <div class="grid-import">
+            <section class="panel">
+              <div class="section-head">
+                <h3>上传资料</h3>
+                <span class="pill">PDF / 图片 / Word</span>
+              </div>
+              <form id="uploadForm" class="stack">
+                <label class="dropzone">
+                  <input id="fileInput" name="file" type="file" accept=".pdf,.doc,.docx,image/*,text/plain" />
+                  <strong>选择一份练习资料</strong>
+                  <span>文本型 PDF 会尝试自动提取，图片可调用千问 OCR。</span>
+                </label>
+                <button class="primary" type="submit">上传并分析</button>
+              </form>
+              <div id="uploadProgress" class="progress-panel hidden" aria-live="polite">
+                <div class="progress-ring"></div>
+                <div>
+                  <strong id="progressTitle">正在处理资料</strong>
+                  <p id="progressText">上传文件中...</p>
+                  <div class="progress-steps">
+                    <span data-step="upload" class="active">上传</span>
+                    <span data-step="extract">转换</span>
+                    <span data-step="split">拆题</span>
+                  </div>
+                </div>
+              </div>
+              <div id="uploadList" class="upload-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="section-head">
+                <h3>拆题与入库</h3>
+                <div class="row-actions">
+                  <button id="ocrBtn" class="ghost">AI OCR</button>
+                  <button id="splitBtn" class="ghost">拆分文本</button>
+                  <button id="saveSplitBtn" class="primary">保存到题库</button>
+                </div>
+              </div>
+              <textarea id="extractText" class="extract-box" placeholder="上传后会显示提取文本，也可以直接粘贴 Word/PDF 里的题目文本。"></textarea>
+              <div class="defaults">
+                <select id="defaultSubject">
+                  <option>小学数学</option>
+                  <option>初中数学</option>
+                  <option>物理</option>
+                  <option>化学</option>
+                  <option>英语</option>
+                </select>
+                <select id="defaultStage">
+                  <option>小学</option>
+                  <option>初中</option>
+                </select>
+                <select id="defaultLevel">
+                  <option>基础</option>
+                  <option>提高</option>
+                  <option>压轴</option>
+                </select>
+                <input id="defaultGrade" placeholder="年级，如 七年级" />
+                <input id="defaultChapter" placeholder="章节" />
+                <input id="defaultKnowledge" placeholder="知识点，逗号分隔" />
+              </div>
+              <div id="splitPreview" class="question-preview"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="bank" class="view">
+          <section class="panel">
+            <div class="section-head">
+              <h3>题库筛选</h3>
+              <div class="row-actions">
+                <button id="clearSelectionBtn" class="ghost">清空选择</button>
+                <button id="useSelectedBtn" class="primary">用所选生成作业</button>
+              </div>
+            </div>
+            <div class="filters">
+              <input id="searchInput" placeholder="搜索题干、知识点、章节" />
+              <select id="filterSubject"><option value="">全部科目</option></select>
+              <select id="filterStage"><option value="">全部学段</option><option>小学</option><option>初中</option></select>
+              <select id="filterLevel"><option value="">全部难度</option><option>基础</option><option>提高</option><option>压轴</option></select>
+              <select id="filterType"><option value="">全部题型</option></select>
+            </div>
+            <div id="questionList" class="question-list"></div>
+          </section>
+        </section>
+
+        <section id="assignments" class="view">
+          <div class="assignment-layout">
+            <section class="panel">
+              <div class="section-head">
+                <h3>生成作业</h3>
+                <span id="selectedCount" class="pill">已选 0 题</span>
+              </div>
+              <div class="form-grid">
+                <label>标题<input id="assignmentTitle" placeholder="例：七年级一次方程周练" /></label>
+                <label>学生<select id="assignmentStudent"></select></label>
+                <label>科目<input id="assignmentSubject" placeholder="初中数学" /></label>
+                <label>年级<input id="assignmentGrade" placeholder="七年级" /></label>
+                <label>用时<input id="assignmentDuration" value="40 分钟" /></label>
+                <label>总分<input id="assignmentScore" value="100" /></label>
+              </div>
+              <div class="section-head tight">
+                <h3>AI 生成同类题</h3>
+                <button id="aiGenerateBtn" class="ghost">生成并加入预览</button>
+              </div>
+              <div class="form-grid">
+                <label>生成数量<input id="aiCount" type="number" value="5" min="1" max="20" /></label>
+                <label>知识点<input id="aiKnowledge" placeholder="如 分式方程，欧姆定律" /></label>
+              </div>
+              <textarea id="aiReference" class="small-textarea" placeholder="可粘贴一道参考题，让 AI 生成同类题。"></textarea>
+              <div class="row-actions">
+                <button id="createAssignmentBtn" class="primary">保存作业</button>
+                <button id="printAssignmentBtn" class="ghost">打印 / 导出 PDF</button>
+              </div>
+            </section>
+
+            <section id="printArea" class="paper">
+              <div class="paper-head">
+                <h1 id="paperTitle">未命名作业</h1>
+                <div class="paper-meta">
+                  <span>姓名：<b id="paperStudent">________</b></span>
+                  <span>日期：<b id="paperDate"></b></span>
+                  <span>用时：<b id="paperDuration">40 分钟</b></span>
+                  <span>总分：<b id="paperScore">100</b></span>
+                </div>
+              </div>
+              <ol id="paperQuestions" class="paper-questions"></ol>
+              <section class="answer-section">
+                <h2>答案与解析</h2>
+                <ol id="paperAnswers"></ol>
+              </section>
+            </section>
+          </div>
+        </section>
+
+        <section id="students" class="view">
+          <div class="two-col">
+            <section class="panel">
+              <div class="section-head"><h3>学生档案</h3></div>
+              <form id="studentForm" class="form-grid">
+                <label>姓名<input name="name" required /></label>
+                <label>学段<select name="stage"><option>小学</option><option>初中</option></select></label>
+                <label>年级<input name="grade" /></label>
+                <label>水平<select name="level"><option>基础</option><option>提高</option><option>压轴</option></select></label>
+                <label class="full">备注<input name="notes" /></label>
+                <button class="primary full" type="submit">新增学生</button>
+              </form>
+              <div id="studentList" class="student-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="section-head"><h3>错题记录</h3></div>
+              <form id="mistakeForm" class="stack">
+                <select name="studentId" id="mistakeStudent"></select>
+                <select name="questionId" id="mistakeQuestion"></select>
+                <select name="reason">
+                  <option>概念不清</option>
+                  <option>计算失误</option>
+                  <option>审题错误</option>
+                  <option>方法不会</option>
+                  <option>粗心漏步</option>
+                </select>
+                <textarea name="note" class="small-textarea" placeholder="补充说明"></textarea>
+                <button class="primary" type="submit">记录错题</button>
+              </form>
+              <div id="mistakeList" class="mistake-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="settings" class="view">
+          <section class="panel prose">
+            <h3>部署与 AI 配置</h3>
+            <p>复制 <code>.env.example</code> 为 <code>.env</code>，填入管理员密码和千问 API Key，然后用 Docker Compose 启动。</p>
+            <pre><code>docker compose up -d --build</code></pre>
+            <p>千问接口使用 OpenAI-compatible 模式。未配置 Key 时，上传、手动分类、题库、作业和 PDF 打印仍可使用，AI OCR 和 AI 出题会提示配置缺失。</p>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>
