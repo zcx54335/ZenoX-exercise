@@ -1,6 +1,8 @@
 .env
 data/db.json
+data/.cache/
 uploads/*
 !uploads/.gitkeep
 node_modules/
+.npm-cache/
 npm-debug.log*

@@ -50,8 +50,9 @@
             <h2 id="viewTitle">总览</h2>
           </div>
           <div class="top-actions">
+            <div id="topStatus" class="top-status"></div>
             <button id="refreshBtn" class="ghost">刷新</button>
-            <button id="quickPrintBtn" class="primary">打印当前作业</button>
+            <button id="quickPrintBtn" class="primary">导出当前作业</button>
           </div>
         </header>
 
@@ -85,18 +86,23 @@
 
         <section id="import" class="view">
           <div class="grid-import">
-            <section class="panel">
+            <section class="panel upload-panel">
               <div class="section-head">
                 <h3>上传资料</h3>
-                <span class="pill">PDF / 图片 / Word</span>
+                <span class="pill">PDF / 图片 / DOCX / 文本</span>
+              </div>
+              <div class="upload-insights">
+                <article><strong>本地优先</strong><span>文本层、页数、截图先本机处理</span></article>
+                <article><strong>疑难再 AI</strong><span>扫描页和图片再调用千问视觉</span></article>
+                <article><strong>先审核</strong><span>质检通过后才允许入库</span></article>
               </div>
               <form id="uploadForm" class="stack">
                 <label class="dropzone">
-                  <input id="fileInput" name="file" type="file" accept=".pdf,.doc,.docx,image/*,text/plain" />
+                  <input id="fileInput" name="file" type="file" accept=".pdf,.docx,image/*,text/plain" />
                   <strong>选择一份练习资料</strong>
-                  <span>文本型 PDF 会尝试自动提取，图片可调用千问 OCR。</span>
+                  <span>会先本地解析，疑难页面再调用千问 OCR 与深度分析。</span>
                 </label>
-                <button class="primary" type="submit">上传并分析</button>
+                <button class="primary" type="submit">上传</button>
               </form>
               <div id="uploadProgress" class="progress-panel hidden" aria-live="polite">
                 <div class="progress-ring"></div>
@@ -118,6 +124,7 @@
                 <h3>拆题与入库</h3>
                 <div class="row-actions">
                   <button id="ocrBtn" class="ghost">AI OCR</button>
+                  <button id="analyzeTextBtn" class="ghost">AI 深度分析</button>
                   <button id="splitBtn" class="ghost">拆分文本</button>
                   <button id="saveSplitBtn" class="primary">保存到题库</button>
                 </div>
@@ -125,15 +132,15 @@
               <textarea id="extractText" class="extract-box" placeholder="上传后会显示提取文本，也可以直接粘贴 Word/PDF 里的题目文本。"></textarea>
               <div class="defaults">
                 <select id="defaultSubject">
-                  <option>小学数学</option>
                   <option>初中数学</option>
-                  <option>物理</option>
-                  <option>化学</option>
-                  <option>英语</option>
+                  <option>初中物理</option>
+                  <option>初中化学</option>
+                  <option>初中英语</option>
+                  <option>小学数学</option>
                 </select>
                 <select id="defaultStage">
-                  <option>小学</option>
                   <option>初中</option>
+                  <option>小学</option>
                 </select>
                 <select id="defaultLevel">
                   <option>基础</option>
@@ -147,6 +154,16 @@
               <div id="splitPreview" class="question-preview"></div>
             </section>
           </div>
+          <section class="panel review-panel-wide">
+            <div class="section-head">
+              <h3>待审核题目</h3>
+              <div class="row-actions">
+                <span id="reviewCount" class="pill">待审核 0 题</span>
+                <button id="approveAllPendingBtn" class="primary">全部入库</button>
+              </div>
+            </div>
+            <div id="reviewList" class="review-list"></div>
+          </section>
         </section>
 
         <section id="bank" class="view">
@@ -158,13 +175,16 @@
                 <button id="useSelectedBtn" class="primary">用所选生成作业</button>
               </div>
             </div>
+            <div id="bankSummary" class="bank-summary"></div>
             <div class="filters">
               <input id="searchInput" placeholder="搜索题干、知识点、章节" />
               <select id="filterSubject"><option value="">全部科目</option></select>
               <select id="filterStage"><option value="">全部学段</option><option>小学</option><option>初中</option></select>
               <select id="filterLevel"><option value="">全部难度</option><option>基础</option><option>提高</option><option>压轴</option></select>
               <select id="filterType"><option value="">全部题型</option></select>
+              <select id="filterKnowledge"><option value="">全部知识点</option></select>
             </div>
+            <div id="knowledgeChips" class="knowledge-chips"></div>
             <div id="questionList" class="question-list"></div>
           </section>
         </section>
@@ -195,7 +215,7 @@
               <textarea id="aiReference" class="small-textarea" placeholder="可粘贴一道参考题，让 AI 生成同类题。"></textarea>
               <div class="row-actions">
                 <button id="createAssignmentBtn" class="primary">保存作业</button>
-                <button id="printAssignmentBtn" class="ghost">打印 / 导出 PDF</button>
+                <button id="printAssignmentBtn" class="ghost">导出 Word</button>
               </div>
             </section>
 
@@ -258,8 +278,50 @@
             <h3>部署与 AI 配置</h3>
             <p>复制 <code>.env.example</code> 为 <code>.env</code>，填入管理员密码和千问 API Key，然后用 Docker Compose 启动。</p>
             <pre><code>docker compose up -d --build</code></pre>
-            <p>千问接口使用 OpenAI-compatible 模式。未配置 Key 时，上传、手动分类、题库、作业和 PDF 打印仍可使用，AI OCR 和 AI 出题会提示配置缺失。</p>
+            <p>千问接口使用 OpenAI-compatible 模式。未配置 Key 时，上传、手动分类、题库、作业和 Word 导出仍可使用，AI OCR 和 AI 出题会提示配置缺失。</p>
           </section>
+          <section class="panel tight">
+            <div class="section-head"><h3>SaaS 运营状态</h3></div>
+            <div id="tenantStatus" class="ops-metrics"></div>
+          </section>
+          <section class="panel tight">
+            <div class="section-head"><h3>套餐与用量</h3></div>
+            <div id="billingSummary" class="billing-summary"></div>
+            <form id="billingForm" class="billing-form">
+              <label>套餐
+                <select name="plan" id="billingPlan"></select>
+              </label>
+              <label>状态
+                <select name="status">
+                  <option value="trialing">试用中</option>
+                  <option value="active">已开通</option>
+                  <option value="past_due">欠费</option>
+                  <option value="expired">已到期</option>
+                  <option value="disabled">已停用</option>
+                </select>
+              </label>
+              <label>试用截止
+                <input name="trialEndsAt" type="date" />
+              </label>
+              <label>续费截止
+                <input name="renewsAt" type="date" />
+              </label>
+              <label class="full">备注
+                <input name="note" placeholder="例如：线下转账、赠送试用、等待续费" />
+              </label>
+              <button class="primary" type="submit">保存套餐</button>
+            </form>
+          </section>
+          <div class="two-col tight">
+            <section class="panel">
+              <div class="section-head"><h3>后台任务</h3></div>
+              <div id="jobList" class="activity"></div>
+            </section>
+            <section class="panel">
+              <div class="section-head"><h3>审计记录</h3></div>
+              <div id="auditList" class="activity"></div>
+            </section>
+          </div>
         </section>
       </section>
     </main>
