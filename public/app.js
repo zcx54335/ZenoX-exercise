@@ -10,7 +10,15 @@ const state = {
   generatedQuestions: [],
   analysisPollers: new Map(),
   reviewPage: 1,
-  reviewPageSize: 1
+  reviewPageSize: 1,
+  crop: {
+    pendingId: "",
+    imageUrl: "",
+    startX: 0,
+    startY: 0,
+    rect: null,
+    dragging: false
+  }
 };
 
 const subjects = ["初中数学", "初中物理", "初中化学", "初中英语", "小学数学"];
@@ -19,12 +27,12 @@ const levels = ["基础", "提高", "压轴"];
 const types = ["选择题", "填空题", "解答题", "判断题", "完形填空", "阅读理解", "作文", "实验题", "计算题", "未分类"];
 
 const titles = {
-  dashboard: ["今日工作", "总览"],
-  import: ["资料入库", "资料整理"],
-  bank: ["分类筛选", "题库"],
-  assignments: ["Word 导出", "作业生成"],
-  students: ["学生跟踪", "学生错题"],
-  settings: ["云端部署", "部署设置"]
+  dashboard: ["今日工作", "数据看板"],
+  import: ["资料入库", "资料解析"],
+  bank: ["分类筛选", "题库管理"],
+  assignments: ["作业导出", "智能组卷"],
+  students: ["学生跟踪", "学生画像"],
+  settings: ["云端部署", "系统设置"]
 };
 
 function escapeHtml(value = "") {
@@ -235,7 +243,7 @@ function renderChrome() {
   const [eyebrow, title] = titles[state.view];
   $("#viewEyebrow").textContent = eyebrow;
   $("#viewTitle").textContent = title;
-  $$(".nav button").forEach((button) => button.classList.toggle("active", button.dataset.view === state.view));
+  $$(".nav button, .route-tabs button").forEach((button) => button.classList.toggle("active", button.dataset.view === state.view));
   $$(".view").forEach((view) => view.classList.toggle("active", view.id === state.view));
   const org = state.db.organizations?.[0] || {};
   const usage = state.db.usage || {};
@@ -380,16 +388,32 @@ function renderReviewList() {
           <button class="ghost" data-review-page="next" ${state.reviewPage >= totalPages ? "disabled" : ""}>下一页</button>
         </div>
       </div>
-      ${pageItems.map((q) => pendingCard(q)).join("")}
+      <div class="review-workbench">
+        <aside class="review-index">
+          ${list.map((q, index) => {
+            const status = q.qualityErrors?.length ? "danger" : q.qualityWarnings?.length ? "warn" : "ok";
+            return `
+              <button class="${index + 1 === state.reviewPage ? "active" : ""} ${status}" data-review-jump="${index + 1}">
+                <strong>${index + 1}</strong>
+                <span>${escapeHtml((q.stem || "未命名题目").slice(0, 34))}</span>
+              </button>
+            `;
+          }).join("")}
+        </aside>
+        <div class="review-current">
+          ${pageItems.map((q) => pendingCard(q)).join("")}
+        </div>
+      </div>
     `
     : `<p class="muted">上传或分析文本后，题目会先进入这里。确认无误后再批量入库。</p>`;
 }
 
 function pendingCard(q) {
   const variants = Array.isArray(q.variants) ? q.variants : [];
+  const visibleVariants = variants.filter((item) => item?.stem || item?.answer || item?.explanation);
   const bodyText = `${q.stem}\n${(q.options || []).join("\n")}`;
   const displayImage = q.questionImage;
-  const needsBoundImage = /(如图|下图|图中|图形|图示|阴影|表格|几何|圆形花坛|\\frac|\\dfrac|\$|sqrt|\\sqrt|_|\^)/.test(bodyText);
+  const needsBoundImage = /(如图|下图|图中|图形|图示|阴影|表格|几何|圆形花坛|统计图|条形图|折线图|扇形图|图形说明|图表|坐标图|频数\/个|频率图|示意图|\\frac|\\dfrac|\$|sqrt|\\sqrt|_|\^)/.test(bodyText);
   const qualityErrors = Array.isArray(q.qualityErrors) ? q.qualityErrors : [];
   const qualityWarnings = Array.isArray(q.qualityWarnings) ? q.qualityWarnings : [];
   return `
@@ -408,6 +432,7 @@ function pendingCard(q) {
             <button class="ghost enrich-pending" type="button">AI 补全</button>
             <button class="primary" type="submit">更新</button>
             <button class="primary approve-pending" type="button">${qualityErrors.length ? "修好后入库" : "入库本题"}</button>
+            ${qualityErrors.length ? `<button class="ghost force-approve-pending" type="button">强制入库</button>` : ""}
             <button class="ghost skip-pending" type="button">跳过</button>
           </div>
         </div>
@@ -440,6 +465,7 @@ function pendingCard(q) {
                     </div>
                     <div class="row-actions">
                       <button class="ghost upload-question-image" type="button">${displayImage ? "替换本题图片" : "上传本题图片"}</button>
+                      ${q.sourceImage ? `<button class="ghost crop-question-image" type="button" data-source-image="${escapeHtml(q.sourceImage)}">框选原页配图</button>` : ""}
                       <input class="manual-question-image hidden" type="file" accept="image/*" />
                     </div>
                   </div>
@@ -459,31 +485,38 @@ function pendingCard(q) {
               </div>
             ` : ""}
             <label class="full">选项<textarea name="options">${escapeHtml((q.options || []).join("\n"))}</textarea></label>
-            <label>科目<select name="subject">${optionTags(subjects, q.subject)}</select></label>
-            <label>学段<select name="stage">${optionTags(stages, q.stage)}</select></label>
-            <label>难度<select name="level">${optionTags(levels, q.level)}</select></label>
-            <label>年级<input name="grade" value="${escapeHtml(q.grade || "")}" /></label>
-            <label>章节<input name="chapter" value="${escapeHtml(q.chapter || "")}" /></label>
-            <label>题型<select name="type">${optionTags(types, q.type)}</select></label>
-            <label class="full">知识点<input name="knowledge" value="${escapeHtml((q.knowledge || []).join("，"))}" /></label>
-            <label>答案<textarea name="answer">${escapeHtml(q.answer || "")}</textarea></label>
-            <label>解析<textarea name="explanation">${escapeHtml(q.explanation || "")}</textarea></label>
+            <details class="review-details full">
+              <summary>答案、解析与分类</summary>
+              <div class="review-detail-grid">
+                <label>科目<select name="subject">${optionTags(subjects, q.subject)}</select></label>
+                <label>学段<select name="stage">${optionTags(stages, q.stage)}</select></label>
+                <label>难度<select name="level">${optionTags(levels, q.level)}</select></label>
+                <label>年级<input name="grade" value="${escapeHtml(q.grade || "")}" /></label>
+                <label>章节<input name="chapter" value="${escapeHtml(q.chapter || "")}" /></label>
+                <label>题型<select name="type">${optionTags(types, q.type)}</select></label>
+                <label class="full">知识点<input name="knowledge" value="${escapeHtml((q.knowledge || []).join("，"))}" /></label>
+                <label class="full">答案<textarea name="answer">${escapeHtml(q.answer || "")}</textarea></label>
+                <label class="full">解析<textarea name="explanation">${escapeHtml(q.explanation || "")}</textarea></label>
+              </div>
+            </details>
           </div>
         </div>
-        <div class="variant-list full">
-          ${[0, 1, 2].map((index) => {
-            const v = variants[index] || {};
-            return `
-              <div class="variant-card" data-variant-index="${index}">
-                <strong>变式 ${index + 1}${v.source ? ` · ${escapeHtml(v.source)}` : ""}</strong>
-                <label>题干<textarea name="variantStem">${escapeHtml(v.stem || "")}</textarea></label>
-                <label>选项<textarea name="variantOptions">${escapeHtml((v.options || []).join("\n"))}</textarea></label>
-                <label>答案<textarea name="variantAnswer">${escapeHtml(v.answer || "")}</textarea></label>
-                <label>解析<textarea name="variantExplanation">${escapeHtml(v.explanation || "")}</textarea></label>
-              </div>
-            `;
-          }).join("")}
-        </div>
+        ${visibleVariants.length ? `<details class="variant-list full">
+          <summary>变式题（点击 AI 补全后可编辑）</summary>
+          <div class="variant-grid">
+            ${visibleVariants.slice(0, 3).map((v, index) => {
+              return `
+                <div class="variant-card" data-variant-index="${index}">
+                  <strong>变式 ${index + 1}${v.source ? ` · ${escapeHtml(v.source)}` : ""}</strong>
+                  <label>题干<textarea name="variantStem">${escapeHtml(v.stem || "")}</textarea></label>
+                  <label>选项<textarea name="variantOptions">${escapeHtml((v.options || []).join("\n"))}</textarea></label>
+                  <label>答案<textarea name="variantAnswer">${escapeHtml(v.answer || "")}</textarea></label>
+                  <label>解析<textarea name="variantExplanation">${escapeHtml(v.explanation || "")}</textarea></label>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </details>` : ""}
       </form>
     </article>
   `;
@@ -496,17 +529,54 @@ function renderUploads() {
         <strong>${escapeHtml(upload.filename)}</strong>
         <p class="muted">${escapeHtml(upload.analysisError || upload.extractionNote || "")}</p>
         ${upload.analysisStatus === "processing" ? analysisProgressMarkup(upload) : ""}
-        <div class="row-actions">
+        ${uploadPageStatusMarkup(upload)}
+        <div class="upload-meta-row">
           <span class="tag">${Math.round((upload.size || 0) / 1024)} KB</span>
           <span class="tag">${pageCount(upload) || 1} 页</span>
           ${upload.uploadCount > 1 ? `<span class="tag duplicate">重复上传 ${upload.uploadCount} 次</span>` : ""}
-          <button class="ghost" data-load-upload="${upload.id}">载入文本</button>
+        </div>
+        <div class="upload-analyze-row">
           ${pageRangeControls(upload)}
-          <button class="ghost" data-analyze-upload="${upload.id}">${upload.analysisStatus === "done" ? "重新分析" : "开始分析"}</button>
+          <button class="primary" data-analyze-upload="${upload.id}">${upload.analysisStatus === "done" ? "重新分析" : "开始分析"}</button>
         </div>
       </div>
     `).join("")
     : `<p class="muted">上传 PDF、图片或 Word 后会出现在这里。</p>`;
+}
+
+function pageStatus(page = {}) {
+  const text = String(page.text || "").trim();
+  if (page.ocrError) return { label: "失败", tone: "danger", detail: page.ocrError };
+  if (text && page.image) return { label: "已识别", tone: "ok", detail: "文本和截图已就绪" };
+  if (text) return { label: "有文本", tone: "ok", detail: "已提取文本层" };
+  if (page.image) return { label: "待 OCR", tone: "warn", detail: "有截图，可重试分析" };
+  return { label: "待处理", tone: "", detail: "等待转换" };
+}
+
+function uploadPageStatusMarkup(upload = {}) {
+  const pages = Array.isArray(upload.pages) ? upload.pages : [];
+  if (!pages.length) return "";
+  return `
+    <details class="page-status-panel">
+      <summary>页状态 · ${pages.length} 页</summary>
+      <div class="page-status-grid">
+        ${pages.slice(0, 80).map((page) => {
+          const status = pageStatus(page);
+          return `
+            <div class="page-status-card ${status.tone}">
+              <strong>第 ${escapeHtml(page.page || "")} 页</strong>
+              <span>${escapeHtml(status.label)}</span>
+              <small>${escapeHtml(status.detail)}</small>
+              <div class="row-actions">
+                ${page.image ? `<a class="source-link" href="${escapeHtml(page.image)}" target="_blank" rel="noreferrer">预览</a>` : ""}
+                ${(page.ocrError || (!page.text && page.image)) ? `<button class="ghost retry-page" data-retry-upload="${upload.id}" data-retry-page="${escapeHtml(page.page)}">重试本页</button>` : ""}
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </details>
+  `;
 }
 
 function analysisProgressMarkup(upload) {
@@ -564,6 +634,9 @@ function renderFilters() {
   fillSelect($("#filterSubject"), ["全部科目", ...unique(state.db.questions.map((q) => q.subject))], true);
   fillSelect($("#filterType"), ["全部题型", ...unique(state.db.questions.map((q) => q.type))], true);
   fillSelect($("#filterKnowledge"), ["全部知识点", ...unique(state.db.questions.flatMap((q) => q.knowledge || []))], true);
+  fillSelect($("#filterStudent"), ["全部学生", ...unique(state.db.students.map((s) => s.name))], true);
+  fillSelect($("#filterMistakeReason"), ["全部错因", ...unique(state.db.mistakes.map((m) => m.reason))], true);
+  fillSelect($("#filterSourceFile"), ["全部来源", ...unique(state.db.questions.map((q) => q.sourceFilename))], true);
 }
 
 function renderBankSummary() {
@@ -611,13 +684,31 @@ function questionMatches(q) {
   const level = $("#filterLevel").value;
   const type = $("#filterType").value;
   const knowledge = $("#filterKnowledge").value;
-  const text = [q.stem, q.chapter, q.type, q.subject, ...(q.knowledge || [])].join(" ").toLowerCase();
+  const student = $("#filterStudent").value;
+  const mistakeReason = $("#filterMistakeReason").value;
+  const sourceFile = $("#filterSourceFile").value;
+  const sourcePage = $("#filterSourcePage").value.trim();
+  const hasImage = $("#filterHasImage").value;
+  const used = $("#filterUsed").value;
+  const mistakes = (state.db.mistakes || []).filter((m) => m.questionId === q.id);
+  const mistakeStudents = mistakes
+    .map((m) => state.db.students.find((s) => s.id === m.studentId)?.name || "")
+    .filter(Boolean);
+  const assignmentIds = new Set((state.db.assignments || []).flatMap((a) => a.questionIds || []));
+  const questionHasImage = Boolean(q.questionImage || q.questionImageStoredName);
+  const text = [q.stem, q.chapter, q.type, q.subject, q.sourceFilename, q.sourcePage, ...(q.knowledge || [])].join(" ").toLowerCase();
   return (!search || text.includes(search))
     && (!subject || q.subject === subject)
     && (!stage || q.stage === stage)
     && (!level || q.level === level)
     && (!type || q.type === type)
-    && (!knowledge || (q.knowledge || []).includes(knowledge));
+    && (!knowledge || (q.knowledge || []).includes(knowledge))
+    && (!student || mistakeStudents.includes(student))
+    && (!mistakeReason || mistakes.some((m) => m.reason === mistakeReason))
+    && (!sourceFile || q.sourceFilename === sourceFile)
+    && (!sourcePage || String(q.sourcePage || "") === sourcePage)
+    && (!hasImage || (hasImage === "yes" ? questionHasImage : !questionHasImage))
+    && (!used || (used === "yes" ? assignmentIds.has(q.id) : !assignmentIds.has(q.id)));
 }
 
 function renderQuestionList() {
@@ -898,6 +989,81 @@ async function uploadQuestionImage(reviewItem, file) {
   toast("本题图片已绑定");
 }
 
+function openCropModal(reviewItem, imageUrl) {
+  if (!reviewItem || !imageUrl) return toast("没有可框选的原页截图");
+  state.crop = {
+    pendingId: reviewItem.dataset.pendingId,
+    imageUrl,
+    startX: 0,
+    startY: 0,
+    rect: null,
+    dragging: false
+  };
+  const modal = $("#cropModal");
+  const image = $("#cropImage");
+  const selection = $("#cropSelection");
+  image.src = imageUrl;
+  selection.classList.add("hidden");
+  selection.removeAttribute("style");
+  modal.classList.remove("hidden");
+}
+
+function closeCropModal() {
+  $("#cropModal").classList.add("hidden");
+  $("#cropImage").removeAttribute("src");
+  $("#cropSelection").classList.add("hidden");
+  state.crop = { pendingId: "", imageUrl: "", startX: 0, startY: 0, rect: null, dragging: false };
+}
+
+function cropPoint(event) {
+  const stage = $("#cropStage");
+  const rect = stage.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(stage.scrollWidth, event.clientX - rect.left + stage.scrollLeft)),
+    y: Math.max(0, Math.min(stage.scrollHeight, event.clientY - rect.top + stage.scrollTop))
+  };
+}
+
+function drawCropSelection(rect) {
+  const selection = $("#cropSelection");
+  selection.classList.remove("hidden");
+  selection.style.left = `${rect.x}px`;
+  selection.style.top = `${rect.y}px`;
+  selection.style.width = `${rect.width}px`;
+  selection.style.height = `${rect.height}px`;
+}
+
+async function saveCropSelection() {
+  const crop = state.crop;
+  if (!crop.pendingId || !crop.rect || crop.rect.width < 12 || crop.rect.height < 12) {
+    return toast("请先框选一个更大的区域");
+  }
+  const image = $("#cropImage");
+  if (!image.complete || !image.naturalWidth) return toast("原图还没有加载完成");
+  const display = image.getBoundingClientRect();
+  const stage = $("#cropStage").getBoundingClientRect();
+  const stageEl = $("#cropStage");
+  const imageOffsetX = display.left - stage.left + stageEl.scrollLeft;
+  const imageOffsetY = display.top - stage.top + stageEl.scrollTop;
+  const sx = Math.max(0, (crop.rect.x - imageOffsetX) * image.naturalWidth / display.width);
+  const sy = Math.max(0, (crop.rect.y - imageOffsetY) * image.naturalHeight / display.height);
+  const sw = Math.min(image.naturalWidth - sx, crop.rect.width * image.naturalWidth / display.width);
+  const sh = Math.min(image.naturalHeight - sy, crop.rect.height * image.naturalHeight / display.height);
+  if (sw < 8 || sh < 8) return toast("框选区域没有落在图片上");
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(sw);
+  canvas.height = Math.round(sh);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png", 0.95));
+  if (!blob) return toast("裁剪失败，请重试");
+  const file = new File([blob], `question-crop-${crop.pendingId}.png`, { type: "image/png" });
+  const reviewItem = $(`.review-item[data-pending-id="${CSS.escape(crop.pendingId)}"]`);
+  await uploadQuestionImage(reviewItem, file);
+  closeCropModal();
+}
+
 function clampReviewPageAfterRemoval(previousCount) {
   const nextCount = Math.max(0, previousCount - 1);
   const totalPages = Math.max(1, Math.ceil(nextCount / state.reviewPageSize));
@@ -941,6 +1107,64 @@ async function createAssignment() {
   });
   await loadState();
   toast(`已保存作业：${payload.assignment.title}`);
+}
+
+function usedQuestionIds() {
+  return new Set((state.db.assignments || []).flatMap((assignment) => assignment.questionIds || []));
+}
+
+function autoPickQuestions({ fromWeakness = false } = {}) {
+  const count = Math.max(1, Number($("#autoPickCount").value || 10));
+  const subject = ($("#assignmentSubject").value || $("#defaultSubject").value || "").trim();
+  const grade = ($("#assignmentGrade").value || $("#defaultGrade").value || "").trim();
+  const knowledgeInput = ($("#autoPickKnowledge").value || $("#aiKnowledge").value || "").trim();
+  const avoidUsed = $("#autoPickAvoidUsed").value !== "no";
+  const used = usedQuestionIds();
+  let knowledgeTags = knowledgeInput.split(/[,，、\s]+/).map((x) => x.trim()).filter(Boolean);
+
+  if (fromWeakness) {
+    const studentId = $("#assignmentStudent").value;
+    const mistakeQuestionIds = new Set((state.db.mistakes || [])
+      .filter((m) => !studentId || m.studentId === studentId)
+      .map((m) => m.questionId));
+    const weakTags = state.db.questions
+      .filter((q) => mistakeQuestionIds.has(q.id))
+      .flatMap((q) => q.knowledge || []);
+    knowledgeTags = unique(weakTags).slice(0, 8);
+    if (!knowledgeTags.length) return toast("这个学生还没有可用的薄弱知识点");
+  }
+
+  const scored = (state.db.questions || [])
+    .filter((q) => !avoidUsed || !used.has(q.id))
+    .filter((q) => !subject || q.subject === subject)
+    .filter((q) => !grade || q.grade === grade)
+    .map((q) => {
+      let score = 0;
+      const tags = q.knowledge || [];
+      if (knowledgeTags.length) {
+        for (const tag of knowledgeTags) {
+          if (tags.includes(tag) || tags.some((item) => item.includes(tag) || tag.includes(item))) score += 12;
+        }
+      } else {
+        score += 1;
+      }
+      if (q.level === $("#defaultLevel").value) score += 3;
+      if (q.questionImage || q.questionImageStoredName) score += 1;
+      return { q, score };
+    })
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || new Date(b.q.createdAt || 0) - new Date(a.q.createdAt || 0));
+
+  const picked = scored.slice(0, count).map(({ q }) => q.id);
+  if (!picked.length) return toast("没有找到符合条件的题目");
+  picked.forEach((id) => state.selected.add(id));
+  state.view = "assignments";
+  renderChrome();
+  renderBankSummary();
+  renderQuestionList();
+  renderAssignmentControls();
+  renderPaper();
+  toast(`已自动选择 ${picked.length} 道题`);
 }
 
 async function exportAssignmentWord() {
@@ -995,11 +1219,34 @@ document.addEventListener("click", async (event) => {
     }
   }
 
+  const retryPage = event.target.closest(".retry-page");
+  if (retryPage) {
+    try {
+      toast(`正在重试第 ${retryPage.dataset.retryPage} 页`);
+      const payload = await api(`/api/uploads/${retryPage.dataset.retryUpload}/analyze`, {
+        method: "POST",
+        body: { defaults: defaultsFromImport(), pageRange: retryPage.dataset.retryPage }
+      });
+      const index = state.db.uploads.findIndex((item) => item.id === payload.upload.id);
+      if (index !== -1) state.db.uploads[index] = payload.upload;
+      renderUploads();
+      startAnalysisPolling(payload.upload.id);
+    } catch (error) {
+      toast(error.message);
+    }
+  }
+
   const reviewPage = event.target.closest("[data-review-page]");
   if (reviewPage) {
     const totalPages = Math.max(1, Math.ceil((state.db.pendingQuestions || []).length / state.reviewPageSize));
     if (reviewPage.dataset.reviewPage === "prev") state.reviewPage = Math.max(1, state.reviewPage - 1);
     if (reviewPage.dataset.reviewPage === "next") state.reviewPage = Math.min(totalPages, state.reviewPage + 1);
+    renderReviewList();
+  }
+
+  const reviewJump = event.target.closest("[data-review-jump]");
+  if (reviewJump) {
+    state.reviewPage = Number(reviewJump.dataset.reviewJump) || 1;
     renderReviewList();
   }
 
@@ -1040,6 +1287,10 @@ document.addEventListener("click", async (event) => {
     reviewItem.querySelector(".manual-question-image")?.click();
   }
 
+  if (reviewItem && event.target.matches(".crop-question-image")) {
+    openCropModal(reviewItem, event.target.dataset.sourceImage);
+  }
+
   if (reviewItem && event.target.matches(".skip-pending")) {
     const previousCount = (state.db.pendingQuestions || []).length;
     await api(`/api/pending-questions/${reviewItem.dataset.pendingId}`, { method: "DELETE" });
@@ -1068,6 +1319,26 @@ document.addEventListener("click", async (event) => {
     }
   }
 
+  if (reviewItem && event.target.matches(".force-approve-pending")) {
+    const form = reviewItem.querySelector(".pending-editor");
+    try {
+      await api(`/api/pending-questions/${reviewItem.dataset.pendingId}`, {
+        method: "PATCH",
+        body: collectPendingPayload(form)
+      });
+      const payload = await api("/api/pending-questions/approve", {
+        method: "POST",
+        body: { ids: [reviewItem.dataset.pendingId], includeVariants: true, force: true }
+      });
+      clampReviewPageAfterRemoval((state.db.pendingQuestions || []).length);
+      await loadState();
+      toast(`已强制入库 ${payload.questions.length} 道题，请后续复核`);
+    } catch (error) {
+      await loadState();
+      toast(error.message);
+    }
+  }
+
   if (reviewItem && event.target.matches(".enrich-pending")) {
     const button = event.target;
     button.disabled = true;
@@ -1083,6 +1354,37 @@ document.addEventListener("click", async (event) => {
       button.textContent = "AI 补全";
     }
   }
+});
+
+$("#closeCropBtn").addEventListener("click", closeCropModal);
+$("#resetCropBtn").addEventListener("click", () => {
+  state.crop.rect = null;
+  $("#cropSelection").classList.add("hidden");
+});
+$("#saveCropBtn").addEventListener("click", () => saveCropSelection().catch((error) => toast(error.message)));
+$("#cropStage").addEventListener("pointerdown", (event) => {
+  if ($("#cropModal").classList.contains("hidden")) return;
+  const point = cropPoint(event);
+  state.crop.dragging = true;
+  state.crop.startX = point.x;
+  state.crop.startY = point.y;
+  state.crop.rect = { x: point.x, y: point.y, width: 0, height: 0 };
+  drawCropSelection(state.crop.rect);
+});
+$("#cropStage").addEventListener("pointermove", (event) => {
+  if (!state.crop.dragging) return;
+  const point = cropPoint(event);
+  const rect = {
+    x: Math.min(state.crop.startX, point.x),
+    y: Math.min(state.crop.startY, point.y),
+    width: Math.abs(point.x - state.crop.startX),
+    height: Math.abs(point.y - state.crop.startY)
+  };
+  state.crop.rect = rect;
+  drawCropSelection(rect);
+});
+document.addEventListener("pointerup", () => {
+  state.crop.dragging = false;
 });
 
 document.addEventListener("change", (event) => {
@@ -1244,12 +1546,23 @@ $("#useSelectedBtn").addEventListener("click", () => {
   renderPaper();
 });
 $("#aiGenerateBtn").addEventListener("click", () => generateAiQuestions().catch((error) => toast(error.message)));
+$("#autoPickBtn").addEventListener("click", () => autoPickQuestions());
+$("#studentWeakPickBtn").addEventListener("click", () => autoPickQuestions({ fromWeakness: true }));
 $("#createAssignmentBtn").addEventListener("click", () => createAssignment().catch((error) => toast(error.message)));
 $("#printAssignmentBtn").addEventListener("click", () => exportAssignmentWord().catch((error) => toast(error.message)));
-$("#quickPrintBtn").addEventListener("click", () => {
+$("#exportPdfBtn").addEventListener("click", () => {
+  if (!selectedQuestions().length) return toast("请先选择或生成题目");
   state.view = "assignments";
   renderChrome();
-  setTimeout(() => exportAssignmentWord().catch((error) => toast(error.message)), 50);
+  renderPaper();
+  setTimeout(() => window.print(), 50);
+});
+$("#quickPrintBtn").addEventListener("click", () => {
+  if (!selectedQuestions().length) return toast("请先选择或生成题目");
+  state.view = "assignments";
+  renderChrome();
+  renderPaper();
+  setTimeout(() => window.print(), 50);
 });
 
 $("#studentForm").addEventListener("submit", async (event) => {

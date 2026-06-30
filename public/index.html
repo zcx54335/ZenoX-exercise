@@ -29,16 +29,16 @@
           <div class="logo">Z</div>
           <div>
             <strong>ZenoX</strong>
-            <span>题库工作台</span>
+            <span>智能题库 SaaS</span>
           </div>
         </div>
         <nav class="nav">
-          <button data-view="dashboard" class="active">总览</button>
-          <button data-view="import">资料整理</button>
-          <button data-view="bank">题库</button>
-          <button data-view="assignments">作业生成</button>
-          <button data-view="students">学生错题</button>
-          <button data-view="settings">部署设置</button>
+          <button data-view="dashboard" data-icon="⌘" class="active">数据看板</button>
+          <button data-view="import" data-icon="↥">资料解析</button>
+          <button data-view="bank" data-icon="▦">题库管理</button>
+          <button data-view="assignments" data-icon="✎">智能组卷</button>
+          <button data-view="students" data-icon="◎">学生画像</button>
+          <button data-view="settings" data-icon="⚙">系统设置</button>
         </nav>
         <button id="logoutBtn" class="ghost sidebar-logout">退出登录</button>
       </aside>
@@ -55,6 +55,14 @@
             <button id="quickPrintBtn" class="primary">导出当前作业</button>
           </div>
         </header>
+        <div id="routeTabs" class="route-tabs">
+          <button data-view="dashboard" class="active">数据看板</button>
+          <button data-view="import">资料解析</button>
+          <button data-view="bank">题库管理</button>
+          <button data-view="assignments">智能组卷</button>
+          <button data-view="students">学生画像</button>
+          <button data-view="settings">系统设置</button>
+        </div>
 
         <section id="dashboard" class="view active">
           <div class="metrics">
@@ -85,75 +93,63 @@
         </section>
 
         <section id="import" class="view">
-          <div class="grid-import">
-            <section class="panel upload-panel">
-              <div class="section-head">
-                <h3>上传资料</h3>
-                <span class="pill">PDF / 图片 / DOCX / 文本</span>
+          <section class="panel upload-panel upload-workbench">
+            <div class="section-head">
+              <div>
+                <h3>上传资料分析</h3>
+                <p class="muted">上传 PDF、图片或 Word 后，先识别页数，再选择页码范围开始分析。</p>
               </div>
-              <div class="upload-insights">
-                <article><strong>本地优先</strong><span>文本层、页数、截图先本机处理</span></article>
-                <article><strong>疑难再 AI</strong><span>扫描页和图片再调用千问视觉</span></article>
-                <article><strong>先审核</strong><span>质检通过后才允许入库</span></article>
-              </div>
-              <form id="uploadForm" class="stack">
-                <label class="dropzone">
-                  <input id="fileInput" name="file" type="file" accept=".pdf,.docx,image/*,text/plain" />
-                  <strong>选择一份练习资料</strong>
-                  <span>会先本地解析，疑难页面再调用千问 OCR 与深度分析。</span>
-                </label>
-                <button class="primary" type="submit">上传</button>
-              </form>
-              <div id="uploadProgress" class="progress-panel hidden" aria-live="polite">
-                <div class="progress-ring"></div>
-                <div>
-                  <strong id="progressTitle">正在处理资料</strong>
-                  <p id="progressText">上传文件中...</p>
-                  <div class="progress-steps">
-                    <span data-step="upload" class="active">上传</span>
-                    <span data-step="extract">转换</span>
-                    <span data-step="split">拆题</span>
-                  </div>
+              <span class="pill">PDF / 图片 / DOCX / 文本</span>
+            </div>
+            <div class="defaults import-defaults">
+              <select id="defaultSubject" aria-label="默认科目">
+                <option>初中数学</option>
+                <option>初中物理</option>
+                <option>初中化学</option>
+                <option>初中英语</option>
+                <option>小学数学</option>
+              </select>
+              <select id="defaultStage" aria-label="默认学段">
+                <option>初中</option>
+                <option>小学</option>
+              </select>
+              <select id="defaultLevel" aria-label="默认难度">
+                <option>基础</option>
+                <option>提高</option>
+                <option>压轴</option>
+              </select>
+              <input id="defaultGrade" placeholder="年级，如 九年级" />
+              <input id="defaultChapter" placeholder="章节" />
+              <input id="defaultKnowledge" placeholder="知识点，逗号分隔" />
+            </div>
+            <form id="uploadForm" class="upload-form">
+              <label class="dropzone">
+                <input id="fileInput" name="file" type="file" accept=".pdf,.docx,image/*,text/plain" />
+                <strong>选择一份练习资料</strong>
+                <span>上传后在下方选择页码范围，再点击开始分析。</span>
+              </label>
+              <button class="primary" type="submit">上传资料</button>
+            </form>
+            <div id="uploadProgress" class="progress-panel hidden" aria-live="polite">
+              <div class="progress-ring"></div>
+              <div>
+                <strong id="progressTitle">正在处理资料</strong>
+                <p id="progressText">上传文件中...</p>
+                <div class="progress-steps">
+                  <span data-step="upload" class="active">上传</span>
+                  <span data-step="extract">转换</span>
+                  <span data-step="split">分析</span>
                 </div>
               </div>
-              <div id="uploadList" class="upload-list"></div>
-            </section>
-
-            <section class="panel">
-              <div class="section-head">
-                <h3>拆题与入库</h3>
-                <div class="row-actions">
-                  <button id="ocrBtn" class="ghost">AI OCR</button>
-                  <button id="analyzeTextBtn" class="ghost">AI 深度分析</button>
-                  <button id="splitBtn" class="ghost">拆分文本</button>
-                  <button id="saveSplitBtn" class="primary">保存到题库</button>
-                </div>
-              </div>
-              <textarea id="extractText" class="extract-box" placeholder="上传后会显示提取文本，也可以直接粘贴 Word/PDF 里的题目文本。"></textarea>
-              <div class="defaults">
-                <select id="defaultSubject">
-                  <option>初中数学</option>
-                  <option>初中物理</option>
-                  <option>初中化学</option>
-                  <option>初中英语</option>
-                  <option>小学数学</option>
-                </select>
-                <select id="defaultStage">
-                  <option>初中</option>
-                  <option>小学</option>
-                </select>
-                <select id="defaultLevel">
-                  <option>基础</option>
-                  <option>提高</option>
-                  <option>压轴</option>
-                </select>
-                <input id="defaultGrade" placeholder="年级，如 七年级" />
-                <input id="defaultChapter" placeholder="章节" />
-                <input id="defaultKnowledge" placeholder="知识点，逗号分隔" />
-              </div>
-              <div id="splitPreview" class="question-preview"></div>
-            </section>
-          </div>
+            </div>
+            <textarea id="extractText" class="extract-box hidden" aria-hidden="true"></textarea>
+            <button id="ocrBtn" class="hidden" type="button">AI OCR</button>
+            <button id="analyzeTextBtn" class="hidden" type="button">AI 深度分析</button>
+            <button id="splitBtn" class="hidden" type="button">拆分文本</button>
+            <button id="saveSplitBtn" class="hidden" type="button">保存到题库</button>
+            <div id="splitPreview" class="question-preview hidden"></div>
+            <div id="uploadList" class="upload-list"></div>
+          </section>
           <section class="panel review-panel-wide">
             <div class="section-head">
               <h3>待审核题目</h3>
@@ -183,6 +179,12 @@
               <select id="filterLevel"><option value="">全部难度</option><option>基础</option><option>提高</option><option>压轴</option></select>
               <select id="filterType"><option value="">全部题型</option></select>
               <select id="filterKnowledge"><option value="">全部知识点</option></select>
+              <select id="filterStudent"><option value="">全部学生</option></select>
+              <select id="filterMistakeReason"><option value="">全部错因</option></select>
+              <select id="filterSourceFile"><option value="">全部来源</option></select>
+              <input id="filterSourcePage" placeholder="来源页码" />
+              <select id="filterHasImage"><option value="">是否有图</option><option value="yes">有图</option><option value="no">无图</option></select>
+              <select id="filterUsed"><option value="">是否用过</option><option value="yes">已用过</option><option value="no">未用过</option></select>
             </div>
             <div id="knowledgeChips" class="knowledge-chips"></div>
             <div id="questionList" class="question-list"></div>
@@ -213,9 +215,20 @@
                 <label>知识点<input id="aiKnowledge" placeholder="如 分式方程，欧姆定律" /></label>
               </div>
               <textarea id="aiReference" class="small-textarea" placeholder="可粘贴一道参考题，让 AI 生成同类题。"></textarea>
+              <div class="section-head tight">
+                <h3>自动组卷</h3>
+                <button id="autoPickBtn" class="ghost">按条件选题</button>
+              </div>
+              <div class="form-grid">
+                <label>组卷题数<input id="autoPickCount" type="number" value="10" min="1" max="60" /></label>
+                <label>知识点<input id="autoPickKnowledge" placeholder="留空则按当前科目/年级" /></label>
+                <label>避开已用题<select id="autoPickAvoidUsed"><option value="yes">是</option><option value="no">否</option></select></label>
+              </div>
+              <button id="studentWeakPickBtn" class="ghost full">按学生薄弱点选题</button>
               <div class="row-actions">
                 <button id="createAssignmentBtn" class="primary">保存作业</button>
                 <button id="printAssignmentBtn" class="ghost">导出 Word</button>
+                <button id="exportPdfBtn" class="ghost">导出 PDF</button>
               </div>
             </section>
 
@@ -327,6 +340,25 @@
     </main>
 
     <div id="toast" class="toast hidden"></div>
+    <div id="cropModal" class="crop-modal hidden" role="dialog" aria-modal="true" aria-label="框选本题配图">
+      <div class="crop-dialog">
+        <div class="section-head">
+          <div>
+            <h3>框选本题配图</h3>
+            <p class="muted">在原页截图上拖拽选择图形区域，保存后会绑定到当前题目。</p>
+          </div>
+          <button id="closeCropBtn" class="ghost">关闭</button>
+        </div>
+        <div id="cropStage" class="crop-stage">
+          <img id="cropImage" alt="原页截图" />
+          <div id="cropSelection" class="crop-selection hidden"></div>
+        </div>
+        <div class="row-actions crop-actions">
+          <button id="saveCropBtn" class="primary">保存配图</button>
+          <button id="resetCropBtn" class="ghost">重新框选</button>
+        </div>
+      </div>
+    </div>
     <script src="/app.js"></script>
   </body>
 </html>

@@ -40,28 +40,72 @@ function loadEnvFile() {
 
 function stopPort(targetPort) {
   if (!targetPort) return;
-  let output = "";
-  try {
-    output = execFileSync("lsof", ["-ti", `tcp:${targetPort}`], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"]
-    });
-  } catch {
-    return;
-  }
+  const pids = process.platform === "win32"
+    ? windowsPortPids(targetPort)
+    : unixPortPids(targetPort);
 
-  const pids = output
-    .split(/\s+/)
-    .map((pid) => Number(pid))
-    .filter((pid) => Number.isInteger(pid) && pid > 0 && pid !== process.pid);
+  const safePids = pids
+    .filter((pid) => Number.isInteger(pid) && pid > 0)
+    .filter((pid) => pid !== process.pid && pid !== process.ppid);
 
-  if (!pids.length) return;
-  console.log(`Port ${targetPort} is in use. Stopping old process: ${pids.join(", ")}`);
-  for (const pid of pids) {
+  if (!safePids.length) return;
+  console.log(`Port ${targetPort} is in use. Stopping old process: ${safePids.join(", ")}`);
+  for (const pid of safePids) {
     try {
       process.kill(pid, "SIGTERM");
     } catch {
-      // The process may already have exited.
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch {
+        // The process may already have exited or belong to another user.
+      }
     }
   }
+}
+
+function unixPortPids(targetPort) {
+  try {
+    const output = execFileSync("lsof", ["-ti", `tcp:${targetPort}`], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+    return parsePidList(output);
+  } catch {
+    return [];
+  }
+}
+
+function windowsPortPids(targetPort) {
+  try {
+    const output = execFileSync("powershell.exe", [
+      "-NoProfile",
+      "-Command",
+      `Get-NetTCPConnection -LocalPort ${targetPort} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique`
+    ], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+    return parsePidList(output);
+  } catch {
+    try {
+      const output = execFileSync("netstat", ["-ano", "-p", "tcp"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"]
+      });
+      return output
+        .split(/\r?\n/)
+        .filter((line) => line.includes(`:${targetPort}`) && /\bLISTENING\b/i.test(line))
+        .map((line) => Number(line.trim().split(/\s+/).at(-1)))
+        .filter((pid) => Number.isInteger(pid) && pid > 0);
+    } catch {
+      return [];
+    }
+  }
+}
+
+function parsePidList(output = "") {
+  return output
+    .split(/\s+/)
+    .map((pid) => Number(pid))
+    .filter((pid) => Number.isInteger(pid) && pid > 0);
 }

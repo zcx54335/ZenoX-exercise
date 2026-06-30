@@ -831,7 +831,15 @@ async function readDb() {
         if (image) sourceImageByQuestion.set(`${upload.id}:${Number(page.page)}`, image);
       }
     }
-    db.pendingQuestions = db.pendingQuestions.map((q) => applyQuestionQuality({
+    db.questions = db.questions.map((q) => {
+      const sourceImage = q.sourceImage || sourceImageByQuestion.get(`${q.sourceUploadId}:${Number(q.sourcePage)}`) || "";
+      const next = { ...q, sourceImage };
+      if (!next.questionImageStoredName && shouldUseSourcePageAsQuestionImage(next)) {
+        next.questionImage = sourceImage;
+      }
+      return next;
+    });
+    db.pendingQuestions = dedupeQuestionItems(db.pendingQuestions.map((q) => applyQuestionQuality({
       options: [],
       variants: [],
       status: "pending",
@@ -845,7 +853,7 @@ async function readDb() {
       explanation: normalizeQuestionText(q.explanation),
       sourceImage: q.sourceImage || sourceImageByQuestion.get(`${q.sourceUploadId}:${Number(q.sourcePage)}`) || "",
       knowledge: normalizeKnowledgeTags(q.knowledge, q.subject, q.stem)
-    }));
+    })));
     const pendingGroups = new Map();
     db.pendingQuestions.forEach((q) => {
       if (!q.sourceUploadId || !q.sourcePage) return;
@@ -861,6 +869,8 @@ async function readDb() {
         q.sourceTotalOnPage = hasTotal && Number.isFinite(Number(q.sourceTotalOnPage)) ? Number(q.sourceTotalOnPage) : group.length;
         if (q.questionImageManual && q.questionImageStoredName) {
           q.questionImage = q.questionImage || `/api/pending-questions/${q.id}/image`;
+        } else if (shouldUseSourcePageAsQuestionImage(q)) {
+          q.questionImage = q.sourceImage;
         } else {
           q.questionImage = "";
         }
@@ -1425,11 +1435,15 @@ function splitQuestionsFromText(text) {
   const cleaned = normalizeExtractedText(text);
   if (!cleaned) return [];
   const prepared = cleaned
+    .replace(/([。！？；;])\s*(?=\d{1,3}[.、](?!\d)\s*\S)/g, "$1\n")
+    .replace(/([。！？；;])\s*(?=[一二三四五六七八九十]+[、.．]\s*\S)/g, "$1\n")
+    .replace(/([^\n])\s+(?=\d{1,3}[.、](?!\d)\s*[\u4e00-\u9fa5A-Za-z])/g, "$1\n")
     .replace(/[ \t]+(?=\d{1,3}[.、](?!\d)\s*\S)/g, "\n")
     .replace(/[ \t]+(?=[（(]\s*\d{1,2}\s*[)）])/g, "\n");
   const blocks = [];
   let current = [];
   for (const line of prepared.split("\n").map((item) => item.trim()).filter(Boolean)) {
+    if (/^【(?:左|右|上|下)半(?:页|区|部分|栏)】$/.test(line)) continue;
     if (!current.length && isProbablySectionHeading(line)) continue;
     if (isTopLevelQuestionStart(line) && current.length) {
       blocks.push(current.join("\n").trim());
@@ -1492,6 +1506,10 @@ function makeQuestion(input = {}) {
     variantOf: input.variantOf || "",
     variants: Array.isArray(input.variants) ? input.variants : [],
     duplicateOf: input.duplicateOf || "",
+    forceApproved: Boolean(input.forceApproved),
+    qualityStatus: input.qualityStatus || "ok",
+    qualityErrors: Array.isArray(input.qualityErrors) ? input.qualityErrors : [],
+    qualityWarnings: Array.isArray(input.qualityWarnings) ? input.qualityWarnings : [],
     tenantId: input.tenantId || DEFAULT_TENANT_ID,
     createdBy: input.createdBy || DEFAULT_ADMIN_ID,
     updatedBy: input.updatedBy || input.createdBy || DEFAULT_ADMIN_ID,
@@ -1596,11 +1614,21 @@ function isVariantTypeConsistent(variant = {}, parent = {}) {
 }
 
 function hasBoundQuestionImage(question = {}) {
-  return Boolean(question.questionImageStoredName || question.questionImageManual || (question.questionImage && !String(question.questionImage).includes("/uploads/")));
+  return Boolean(
+    question.questionImageStoredName
+    || question.questionImageManual
+    || (question.questionImage && !String(question.questionImage).includes("/uploads/"))
+    || shouldUseSourcePageAsQuestionImage(question)
+  );
 }
 
 function hasImageCue(text = "") {
-  return /(如图|下图|图中|图示|见图|阴影区域|阴影部分|由图可知|根据图|如右图|如左图)/.test(String(text));
+  return /(如图|下图|图中|图示|见图|阴影区域|阴影部分|由图可知|根据图|如右图|如左图|统计图|条形图|折线图|扇形图|图形说明|图表|坐标图|频数\/个|频率图|示意图)/.test(String(text));
+}
+
+function shouldUseSourcePageAsQuestionImage(question = {}) {
+  const body = [question.stem, normalizeOptions(question.options).join("\n"), question.imageNote].filter(Boolean).join("\n");
+  return Boolean(question.sourceImage && hasImageCue(body));
 }
 
 function hasFormulaRisk(text = "") {
@@ -1762,9 +1790,20 @@ function pendingQuestionsFromPages(db, upload, pages, defaults = {}) {
       updatedBy: upload.updatedBy || upload.createdBy || DEFAULT_ADMIN_ID,
       status: "needs_ai"
     });
-    pending.variants = fillVariantsFromBank(db, pending, []);
+    pending.variants = [];
     return pending;
   });
+}
+
+function reconcileAiCandidates(aiCandidates = [], fallbackCandidates = []) {
+  if (!aiCandidates.length) return fallbackCandidates;
+  if (fallbackCandidates.length <= aiCandidates.length) return aiCandidates;
+  const merged = dedupeQuestionItems(aiCandidates);
+  const missing = fallbackCandidates.filter((question) => {
+    if (!duplicateFingerprint(question.stem)) return false;
+    return !merged.some((candidate) => isLikelySameQuestionText(candidate.stem, question.stem));
+  });
+  return dedupeQuestionItems(merged.concat(missing));
 }
 
 async function enrichPendingQuestion(db, question, session = {}) {
@@ -1814,6 +1853,93 @@ function fingerprint(text) {
     .replace(/\s+/g, "")
     .replace(/[^\p{L}\p{N}]/gu, "")
     .slice(0, 180);
+}
+
+function duplicateFingerprint(text) {
+  return normalizeQuestionText(text)
+    .replace(/^题干[:：]?\s*/i, "")
+    .replace(/^\s*(?:\d{1,3}\s*[.、．)]\s*|[一二三四五六七八九十]+[、.．]\s*)?/, "")
+    .replace(/^\s*[（(]\s*\d+(?:\.\d+)?\s*分\s*[)）]\s*/, "")
+    .replace(/^\s*\d+(?:\.\d+)?\s*分\s*/, "")
+    .toLowerCase()
+    .replace(/[|｜\-—_…·，。！？；：、,.!?;:()[\]{}（）【】《》<>“”"'`\s]/g, "")
+    .slice(0, 260);
+}
+
+function textSimilarity(a = "", b = "") {
+  const left = duplicateFingerprint(a);
+  const right = duplicateFingerprint(b);
+  if (!left || !right) return 0;
+  if (left === right) return 1;
+  const min = Math.min(left.length, right.length);
+  const max = Math.max(left.length, right.length);
+  if (min >= 40 && (left.includes(right) || right.includes(left))) {
+    return min / max >= 0.55 ? 0.96 : 0.72;
+  }
+  const grams = (value) => {
+    const set = new Set();
+    for (let index = 0; index <= value.length - 3; index += 1) set.add(value.slice(index, index + 3));
+    return set;
+  };
+  const leftGrams = grams(left);
+  const rightGrams = grams(right);
+  if (!leftGrams.size || !rightGrams.size) return 0;
+  let shared = 0;
+  for (const gram of leftGrams) {
+    if (rightGrams.has(gram)) shared += 1;
+  }
+  return shared / (leftGrams.size + rightGrams.size - shared);
+}
+
+function isLikelySameQuestionText(a = "", b = "") {
+  const left = duplicateFingerprint(a);
+  const right = duplicateFingerprint(b);
+  if (!left || !right) return false;
+  if (left === right) return true;
+  const min = Math.min(left.length, right.length);
+  if (min < 28) return false;
+  return textSimilarity(left, right) >= 0.84;
+}
+
+function questionCompletenessScore(question = {}) {
+  let score = Math.min(6, duplicateFingerprint(question.stem).length / 80);
+  if (normalizeQuestionText(question.answer).length > 1) score += 4;
+  if (normalizeQuestionText(question.explanation).length > 8) score += 4;
+  if (normalizeOptions(question.options).length) score += 2;
+  if (question.status && question.status !== "needs_ai") score += 1;
+  if (question.sourceImage) score += 0.5;
+  return score;
+}
+
+function mergeDuplicateQuestion(primary = {}, duplicate = {}) {
+  const merged = { ...primary };
+  for (const key of ["answer", "explanation", "subject", "stage", "level", "grade", "chapter", "type", "sourceImage", "sourceText"]) {
+    if (!merged[key] && duplicate[key]) merged[key] = duplicate[key];
+  }
+  if (!normalizeOptions(merged.options).length && normalizeOptions(duplicate.options).length) merged.options = duplicate.options;
+  if (!parseTags(merged.knowledge).length && parseTags(duplicate.knowledge).length) merged.knowledge = duplicate.knowledge;
+  if (!Array.isArray(merged.variants) || !merged.variants.length) merged.variants = duplicate.variants || [];
+  return merged;
+}
+
+function dedupeQuestionItems(items = []) {
+  const kept = [];
+  for (const item of items) {
+    const tenantId = item.tenantId || DEFAULT_TENANT_ID;
+    const duplicateIndex = kept.findIndex((candidate) =>
+      (candidate.tenantId || DEFAULT_TENANT_ID) === tenantId
+      && isLikelySameQuestionText(candidate.stem, item.stem)
+    );
+    if (duplicateIndex === -1) {
+      kept.push(item);
+      continue;
+    }
+    const current = kept[duplicateIndex];
+    kept[duplicateIndex] = questionCompletenessScore(item) > questionCompletenessScore(current)
+      ? mergeDuplicateQuestion(item, current)
+      : mergeDuplicateQuestion(current, item);
+  }
+  return kept;
 }
 
 function addActivity(db, action, detail, session = {}) {
@@ -2052,13 +2178,29 @@ function parseAiJson(text) {
     return index === -1 ? Number.POSITIVE_INFINITY : index;
   }));
   const candidate = Number.isFinite(start) ? fenced.slice(start) : fenced;
-  try {
-    return JSON.parse(candidate);
-  } catch {
-    const end = Math.max(candidate.lastIndexOf("}"), candidate.lastIndexOf("]"));
-    if (end > 0) return JSON.parse(candidate.slice(0, end + 1));
-    throw new Error("AI 返回内容不是可解析 JSON");
+  const end = Math.max(candidate.lastIndexOf("}"), candidate.lastIndexOf("]"));
+  const clipped = end > 0 ? candidate.slice(0, end + 1) : candidate;
+  const attempts = [
+    candidate,
+    clipped,
+    repairJsonEscapes(candidate),
+    repairJsonEscapes(clipped)
+  ];
+  for (const attempt of attempts) {
+    if (!attempt) continue;
+    try {
+      return JSON.parse(attempt);
+    } catch {
+      // Try the next repair strategy.
+    }
   }
+  throw new Error("AI 返回内容不是可解析 JSON");
+}
+
+function repairJsonEscapes(value = "") {
+  return String(value)
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "")
+    .replace(/\\(?!["\\/bfnrtu])/g, "\\\\");
 }
 
 function uploadAssetUrl(uploadId, name = "file") {
@@ -2096,10 +2238,23 @@ async function pageImagePathForUpload(upload, page) {
 }
 
 async function readImageSize(imagePath) {
-  const output = await runProcess("sips", ["-g", "pixelWidth", "-g", "pixelHeight", imagePath]);
-  const width = Number(/pixelWidth:\s*(\d+)/.exec(output)?.[1] || 0);
-  const height = Number(/pixelHeight:\s*(\d+)/.exec(output)?.[1] || 0);
-  return { width, height };
+  const buffer = await fs.readFile(imagePath);
+  if (buffer.length >= 24 && buffer.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+  }
+  if (buffer.length >= 10 && buffer[0] === 0xff && buffer[1] === 0xd8) {
+    let offset = 2;
+    while (offset + 9 < buffer.length) {
+      if (buffer[offset] !== 0xff) break;
+      const marker = buffer[offset + 1];
+      const length = buffer.readUInt16BE(offset + 2);
+      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) {
+        return { width: buffer.readUInt16BE(offset + 7), height: buffer.readUInt16BE(offset + 5) };
+      }
+      offset += 2 + length;
+    }
+  }
+  return { width: 0, height: 0 };
 }
 
 async function runProcess(command, args) {
@@ -2218,8 +2373,14 @@ function isSkippableMaterialPage(page = {}) {
   const catalogLike = /(?:^|\n)\s*(?:目录|目\s*录|contents?|前言|序言|编写说明|使用说明|图书在版|版权信息|责任编辑|出版发行)\s*(?:\n|$)/i.test(value)
     || /(?:第[一二三四五六七八九十]+章|专题[一二三四五六七八九十\d]+).{0,30}\.{2,}\s*\d+/.test(value);
   const coverLike = value.length < 160 && /(?:名校题库|测试卷|练习册|目录|主编|出版社|班级|姓名)/.test(value) && !hasQuestion;
-  const answerLike = /^(?:参考答案|答案解析|答案与解析)\b/.test(value) && !hasQuestion;
-  return (catalogLike && !hasQuestion) || coverLike || answerLike;
+  return (catalogLike && !hasQuestion) || coverLike;
+}
+
+function isAnswerMaterialPage(page = {}) {
+  const value = normalizeExtractedText(page.text || "");
+  if (!value) return false;
+  return /(?:^|\n)\s*(?:参考答案|答案解析|答案与解析|参考答案与解析|答案详解)\b/.test(value)
+    || /(?:^|\n)\s*(?:一、|二、|三、)?\s*(?:选择题|填空题|解答题)?\s*答案[:：]/.test(value);
 }
 
 function suggestedAnalysisRange(pages = []) {
@@ -2381,12 +2542,66 @@ async function ocrImageFile(filePath, mimeType, context = {}) {
   }], { vision: true, temperature: 0.1, ...context, purpose: context.purpose || "ocr_image", pages: context.pages || 1 }));
 }
 
+function isLikelyTwoPageSpread(size = {}) {
+  const width = Number(size.width || 0);
+  const height = Number(size.height || 0);
+  return width >= 900 && height >= 500 && width / Math.max(1, height) >= 1.25;
+}
+
+async function ocrImageSpread(filePath, mimeType, context = {}) {
+  const size = await readImageSize(filePath).catch(() => ({ width: 0, height: 0 }));
+  if (!isLikelyTwoPageSpread(size)) return "";
+  const bytes = await fs.readFile(filePath);
+  const dataUrl = `data:${mimeType || "image/png"};base64,${bytes.toString("base64")}`;
+  const regions = [
+    {
+      label: "左半页",
+      instruction: "只识别图片左半部分的题目。不要识别右半部分。保留题号、表格、公式、小问和图形说明。"
+    },
+    {
+      label: "右半页",
+      instruction: "只识别图片右半部分的题目。不要识别左半部分。尤其注意右上、右中位置的题号和图表题，不能因为左边已有题目就停止。保留题号、统计图、扇形图、公式、小问和图形说明。"
+    }
+  ];
+  const parts = [];
+  for (const region of regions) {
+    const text = await callQwen([{
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: `${region.instruction}
+
+这是一张横向扫描页，可能同时包含左右两页或左右两栏。请逐行识别 ${region.label}。只输出可复制文本，不要解释。数学指数写成 a^2，分式写成 (a+b)/(c+d)，根号写成 sqrt(x)。如果有统计图、几何图或表格，请用“图形说明：...”补充关键关系。`
+        },
+        { type: "image_url", image_url: { url: dataUrl } }
+      ]
+    }], { vision: true, temperature: 0.1, ...context, purpose: `${context.purpose || "ocr_spread"}_${region.label}`, pages: 1 });
+    const cleaned = normalizeExtractedText(text);
+    if (cleaned && !/^无|没有|未识别/i.test(cleaned)) parts.push(`【${region.label}】\n${cleaned}`);
+  }
+  return normalizeExtractedText(parts.join("\n\n"));
+}
+
 async function ocrImageBatch(items, context = {}) {
+  const spreadResults = new Map();
+  const normalItems = [];
+  for (const item of items) {
+    const spreadText = await ocrImageSpread(item.imagePath, item.mimeType, context).catch(() => "");
+    if (spreadText) {
+      spreadResults.set(Number(item.page), spreadText);
+    } else {
+      normalItems.push(item);
+    }
+  }
+  if (!normalItems.length) {
+    return items.map((item) => ({ page: item.page, text: spreadResults.get(Number(item.page)) || "" }));
+  }
   const content = [{
     type: "text",
-    text: `请按图片顺序识别每一页练习题。只输出 JSON 数组，不要 Markdown。格式：[{"page":页码,"text":"识别文本"}]。保留题号、公式、选项、表格和图形说明。数学指数写成 a^2、10^-6，分式写成 (a+b)/(c+d)，根号写成 sqrt(x)。如果题目含图，请在题干中补一句“图形说明：...”描述关键关系。`
+    text: `请按图片顺序识别每一页练习题。只输出 JSON 数组，不要 Markdown。格式：[{"page":页码,"text":"识别文本"}]。保留题号、公式、选项、表格和图形说明。遇到左右两页合在一张图、左右分栏或右侧有题时，必须先读左半区再读右半区，不能漏掉右边的题。数学指数写成 a^2、10^-6，分式写成 (a+b)/(c+d)，根号写成 sqrt(x)。如果题目含图，请在题干中补一句“图形说明：...”描述关键关系。`
   }];
-  for (const item of items) {
+  for (const item of normalItems) {
     const bytes = await fs.readFile(item.imagePath);
     content.push({ type: "text", text: `第 ${item.page} 页：` });
     content.push({
@@ -2394,13 +2609,13 @@ async function ocrImageBatch(items, context = {}) {
       image_url: { url: `data:${item.mimeType || "image/png"};base64,${bytes.toString("base64")}` }
     });
   }
-  const raw = await callQwen([{ role: "user", content }], { vision: true, temperature: 0.1, ...context, purpose: context.purpose || "ocr_batch", pages: context.pages || items.length });
+  const raw = await callQwen([{ role: "user", content }], { vision: true, temperature: 0.1, ...context, purpose: context.purpose || "ocr_batch", pages: context.pages || normalItems.length });
   const parsed = parseAiJson(raw);
   const pages = Array.isArray(parsed) ? parsed : parsed.pages || [];
-  const byPage = new Map(pages.map((page, index) => [Number(page.page || items[index]?.page), normalizeExtractedText(page.text || page.content || "")]));
+  const byPage = new Map(pages.map((page, index) => [Number(page.page || normalItems[index]?.page), normalizeExtractedText(page.text || page.content || "")]));
   return items.map((item, index) => ({
     page: item.page,
-    text: byPage.get(Number(item.page)) || normalizeExtractedText(pages[index]?.text || "")
+    text: spreadResults.get(Number(item.page)) || byPage.get(Number(item.page)) || normalizeExtractedText(pages[index]?.text || "")
   }));
 }
 
@@ -2448,9 +2663,10 @@ async function extractDocument(file, filePath, upload) {
 
 async function ensurePageTextWithOcr(upload, pages, context = {}) {
   const output = pages.map((page) => ({ ...page }));
+  const forceVision = /文本层不可靠|乱码|扫描|截图/i.test(upload.extractionNote || "");
   const ocrItems = [];
   for (const page of pages.slice(0, MAX_VISION_PAGES)) {
-    if (isTextReliable(page.text)) {
+    if (!forceVision && isTextReliable(page.text)) {
       continue;
     }
     const imagePath = await pageImagePathForUpload(upload, page);
@@ -2484,13 +2700,13 @@ async function ensurePageTextWithOcr(upload, pages, context = {}) {
 }
 
 function analysisPrompt(sourceText, defaults = {}) {
-  return `你是家教老师的试卷入库助手。请从下面材料中抽取所有题目，并补全答案、解析、知识点和 3 道同难度同知识点的变式题。
+  return `你是家教老师的试卷入库助手。请从下面材料中抽取完整题目，并补全答案、解析和知识点。
 
 要求：
 1. 只输出 JSON，不要 Markdown，不要额外解释。
 2. JSON 格式：{"questions":[...]}。
-3. 每道题字段：stem, options(array), answer, explanation, subject, stage, grade, chapter, knowledge(array), level, type, sourcePage, variants(array)。
-4. variants 必须恰好 3 道，每道含 stem, options(array), answer, explanation, knowledge(array), level, type；变式必须与原题题型一致，选择题必须给出 A/B/C/D 选项，非选择题答案不能只写 A/B/C/D。
+3. 每道题字段：stem, options(array), answer, explanation, subject, stage, grade, chapter, knowledge(array), level, type, sourcePage, needsImage(boolean), imageNote, answerSource。
+4. 不要生成变式题，variants 必须省略或返回空数组。变式题只在老师点击生成时再做。
 5. subject 只能是：${SUBJECTS.join("、")}。
 6. stage 只能是：小学、初中。level 只能是：基础、提高、压轴。
 7. 原题没有答案时，请自己解题并补答案与解析。题干里如有“如图/图中/下图/阴影/表格”等图形信息，必须在 stem 中保留原题文字，并追加“图形说明：...”描述关键图形关系；不要删掉图形条件。
@@ -2499,7 +2715,12 @@ function analysisPrompt(sourceText, defaults = {}) {
 10. knowledge 只保留 1-2 个大知识点，不要拆成很细的小考点。例如“必然事件、不可能事件、随机事件、事件分类”统一写“概率”。
 11. 不要输出题型标题、目录、页眉页脚、分值说明、试卷说明作为题目；不完整的候选块直接跳过。
 12. 如果判断为选择题，必须把 A/B/C/D 放到 options 数组；如果没有选项，不要标为选择题。
-13. 如果题干说“如图/图中/阴影”等但材料里无法得到图形条件，请在 explanation 开头写“需人工绑定配图：...”，不要假装题目完整。
+13. 如果题干说“如图/图中/阴影”等但材料里无法得到图形条件，请设置 needsImage=true，并在 imageNote 写明缺少什么图；explanation 开头写“需人工绑定配图：...”，不要假装题目完整。
+14. sourcePage 必须使用材料中出现的页码。answerSource 写“材料答案区”“AI解题”或“人工待补”。
+15. 遇到答案页、解析页时，不要把答案页文字单独输出为题目，只能把它绑定回前面的题目。
+16. 同一页或同一个候选块里可能有多道题；遇到顶层题号 1.、2.、3.、1、2、3、或“一、二、三、”时，每个顶层题号必须输出为独立题目，不能合并成一道题。
+17. 只有括号小问（1）（2）（3）属于同一道大题；顶层题号后的另一段完整题干属于下一道题。
+18. 如果材料标注了“候选题 1/2/3”，通常每个候选题都要输出一条 questions 记录，除非它明显不是题目。
 
 默认信息：
 科目：${defaults.subject || "初中数学"}
@@ -2514,15 +2735,32 @@ ${sourceText}`;
 async function analyzePagesWithAi(db, upload, pages, defaults = {}) {
   const reliablePages = pages.filter((page) => isTextReliable(page.text));
   if (!reliablePages.length) return [];
-  const sources = questionSourcesFromPages(reliablePages);
-  const chunks = sources.length ? chunkQuestionSources(sources) : chunkPagesForAi(reliablePages);
+  const answerPages = reliablePages.filter(isAnswerMaterialPage);
+  const questionPages = reliablePages.filter((page) => !isAnswerMaterialPage(page));
+  if (!questionPages.length) return [];
+  const answerContext = answerPages.length
+    ? normalizeExtractedText(answerPages.map((page) => `【第 ${page.page} 页答案参考】\n${page.text}`).join("\n\n")).slice(0, 7000)
+    : "";
+  const sources = questionSourcesFromPages(questionPages);
+  const chunks = questionPages.map((page) => {
+    const pageSources = sources.filter((source) => Number(source.page) === Number(page.page));
+    return pageSources.length ? pageSources : [{ page: page.page, text: page.text, image: page.image }];
+  });
   const questions = [];
   for (const chunk of chunks) {
-    const sourceText = chunk.map((item, index) => item.block || `【第 ${item.page} 页 / 候选题 ${index + 1}】\n${item.text}`).join("\n\n");
+    const sourceText = [
+      chunk.map((item, index) => item.block || `【第 ${item.page} 页 / 候选题 ${index + 1}】\n${item.text}`).join("\n\n"),
+      answerContext ? `【答案页参考，只用于绑定答案解析，不要单独输出为题目】\n${answerContext}` : ""
+    ].filter(Boolean).join("\n\n");
     const aiSession = { tenantId: upload.tenantId || DEFAULT_TENANT_ID, userId: upload.createdBy || DEFAULT_ADMIN_ID };
-    const content = await callQwen([{ role: "user", content: analysisPrompt(sourceText, defaults) }], { temperature: 0.2, db, session: aiSession, purpose: "analyze_questions", pages: new Set(chunk.map((item) => item.page)).size });
-    const parsed = parseAiJson(content);
-    const items = Array.isArray(parsed) ? parsed : parsed.questions || [];
+    let items = [];
+    try {
+      const content = await callQwen([{ role: "user", content: analysisPrompt(sourceText, defaults) }], { temperature: 0.2, db, session: aiSession, purpose: "analyze_questions", pages: new Set(chunk.map((item) => item.page)).size });
+      const parsed = parseAiJson(content);
+      items = Array.isArray(parsed) ? parsed : parsed.questions || [];
+    } catch {
+      items = [];
+    }
     for (const item of items) {
       const sourcePage = Number(item.sourcePage || chunk[0]?.page || 1);
       const sourceInfo = chunk.find((candidate) => Number(candidate.page) === sourcePage) || chunk[0];
@@ -2539,7 +2777,7 @@ async function analyzePagesWithAi(db, upload, pages, defaults = {}) {
         sourceTotalOnPage: sourceInfo?.totalOnPage ?? "",
         sourceText: item.sourceText || item.stem || ""
       });
-      pending.variants = fillVariantsFromBank(db, pending, item.variants);
+      pending.variants = [];
       questions.push(pending);
     }
   }
@@ -2547,22 +2785,34 @@ async function analyzePagesWithAi(db, upload, pages, defaults = {}) {
 }
 
 function markDuplicates(db, candidates) {
-  const existing = new Map(db.questions.map((q) => [`${q.tenantId || DEFAULT_TENANT_ID}:${fingerprint(q.stem)}`, q.id]));
-  const pending = new Set(db.pendingQuestions.map((q) => `${q.tenantId || DEFAULT_TENANT_ID}:${fingerprint(q.stem)}`));
+  const uniqueCandidates = dedupeQuestionItems(candidates);
+  const existingQuestions = db.questions || [];
+  const pendingQuestions = db.pendingQuestions || [];
   const accepted = [];
-  let skipped = 0;
-  for (const question of candidates) {
+  let skipped = Math.max(0, candidates.length - uniqueCandidates.length);
+  for (const question of uniqueCandidates) {
     const tenantId = question.tenantId || DEFAULT_TENANT_ID;
-    const key = fingerprint(question.stem);
-    const scopedKey = `${tenantId}:${key}`;
-    if (!key || existing.has(scopedKey) || pending.has(scopedKey) || accepted.some((q) => `${q.tenantId || DEFAULT_TENANT_ID}:${fingerprint(q.stem)}` === scopedKey)) {
+    const key = duplicateFingerprint(question.stem);
+    const existingMatch = existingQuestions.find((q) =>
+      (q.tenantId || DEFAULT_TENANT_ID) === tenantId
+      && isLikelySameQuestionText(q.stem, question.stem)
+    );
+    const pendingMatch = pendingQuestions.find((q) =>
+      (q.tenantId || DEFAULT_TENANT_ID) === tenantId
+      && isLikelySameQuestionText(q.stem, question.stem)
+    );
+    const acceptedMatch = accepted.find((q) =>
+      (q.tenantId || DEFAULT_TENANT_ID) === tenantId
+      && isLikelySameQuestionText(q.stem, question.stem)
+    );
+    if (!key || existingMatch || pendingMatch || acceptedMatch) {
       skipped += 1;
       continue;
     }
     accepted.push(applyQuestionQuality({
       ...question,
       tenantId,
-      duplicateOf: existing.get(scopedKey) || ""
+      duplicateOf: existingMatch?.id || ""
     }));
   }
   return { accepted, skipped };
@@ -2575,7 +2825,11 @@ async function analyzeUploadToPending(db, upload, pages, defaults = {}, session 
     workingPages = await ensurePageTextWithOcr(upload, workingPages, { db, session, purpose: "upload_ocr" });
   }
   const extractedText = normalizeExtractedText(workingPages.map((page) => page.text).join("\n\n"));
-  const candidates = pendingQuestionsFromPages(db, upload, workingPages, defaults);
+  const aiCandidates = process.env.QWEN_API_KEY
+    ? await analyzePagesWithAi(db, upload, workingPages, defaults)
+    : [];
+  const fallbackCandidates = pendingQuestionsFromPages(db, upload, workingPages, defaults);
+  const candidates = reconcileAiCandidates(aiCandidates, fallbackCandidates);
   const { accepted, skipped } = markDuplicates(db, candidates);
   db.pendingQuestions.unshift(...accepted);
   if (accepted.length) addAuditLog(db, session, "analysis.pending.create", "upload", upload.id, `生成 ${accepted.length} 道待审核题`);
@@ -2697,9 +2951,10 @@ async function runUploadAnalysisJob(uploadId, options = {}) {
       : allPages;
     const initiallySkippedPages = workingPages.filter(isSkippableMaterialPage).length;
     workingPages = workingPages.filter((page) => !isSkippableMaterialPage(page));
+    const forceVisionForUpload = /文本层不可靠|乱码|扫描|截图/i.test(upload.extractionNote || "");
     const ocrTargets = [];
     for (const page of workingPages.slice(0, MAX_VISION_PAGES)) {
-      if (isTextReliable(page.text)) continue;
+      if (!forceVisionForUpload && isTextReliable(page.text)) continue;
       if (pageImageStoredNameForUpload(upload, page)) ocrTargets.push(page);
     }
 
@@ -2735,7 +2990,15 @@ async function runUploadAnalysisJob(uploadId, options = {}) {
           delete outputPage.ocrError;
         }
       } catch (error) {
-        if (outputPage) outputPage.ocrError = error.message || "OCR 失败";
+        try {
+          const fallbackText = await ocrImageFile(imagePath, page.image?.includes("/pages/") ? "image/png" : upload.type, { db, session: jobSession, purpose: "analysis_ocr_fallback", pages: 1 });
+          if (outputPage) {
+            outputPage.text = fallbackText;
+            delete outputPage.ocrError;
+          }
+        } catch (fallbackError) {
+          if (outputPage) outputPage.ocrError = fallbackError.message || error.message || "OCR 失败";
+        }
       }
       completed += 1;
       const extractedText = normalizeExtractedText(workingPages.map((item) => item.text).join("\n\n"));
@@ -2763,12 +3026,16 @@ async function runUploadAnalysisJob(uploadId, options = {}) {
       record.analysisProgress = {
         ...record.analysisProgress,
         phase: "split",
-        message: "正在拆分题目...",
+        message: process.env.QWEN_API_KEY ? "AI 正在抽题并补答案解析..." : "正在拆分题目...",
         pendingQuestions: questionSourcesFromPages(workingPages).length
       };
     }));
 
-    const candidates = pendingQuestionsFromPages(db, upload, workingPages, defaults);
+    const aiCandidates = process.env.QWEN_API_KEY
+      ? await analyzePagesWithAi(db, upload, workingPages, defaults)
+      : [];
+    const fallbackCandidates = pendingQuestionsFromPages(db, upload, workingPages, defaults);
+    const candidates = reconcileAiCandidates(aiCandidates, fallbackCandidates);
     const { accepted, skipped } = markDuplicates(db, candidates);
     db.pendingQuestions.unshift(...accepted);
     upload.pages = (upload.pages || []).map((page) => workingPages.find((item) => Number(item.page) === Number(page.page)) || page);
@@ -2806,13 +3073,13 @@ async function runUploadAnalysisJob(uploadId, options = {}) {
   }
 }
 
-function createQuestionsFromPending(db, pendingItems, { includeVariants = true } = {}) {
+function createQuestionsFromPending(db, pendingItems, { includeVariants = true, force = false } = {}) {
   const existing = new Map(db.questions.map((q) => [`${q.tenantId || DEFAULT_TENANT_ID}:${fingerprint(q.stem)}`, q.id]));
   const created = [];
   let skipped = 0;
   for (const item of pendingItems) {
     applyQuestionQuality(item);
-    if (item.qualityErrors?.length) {
+    if (item.qualityErrors?.length && !force) {
       skipped += 1;
       continue;
     }
@@ -2828,6 +3095,7 @@ function createQuestionsFromPending(db, pendingItems, { includeVariants = true }
       questionImage: item.questionImageStoredName ? "" : (item.questionImage || ""),
       questionImageManual: Boolean(item.questionImageManual),
       questionImageStoredName: item.questionImageStoredName || "",
+      forceApproved: Boolean(force && item.qualityErrors?.length),
       variants: item.variants || []
     });
     if (original.questionImageStoredName) original.questionImage = `/api/questions/${original.id}/image`;
@@ -3757,14 +4025,14 @@ async function handleApi(req, res, pathname) {
       const selected = tenantPending.filter((q) => ids.has(q.id));
       selected.forEach(applyQuestionQuality);
       const invalid = selected.filter((q) => q.qualityErrors?.length);
-      if (invalid.length) {
+      if (invalid.length && !body.force) {
         await writeDb(db);
         return json(res, 422, {
           error: `${invalid.length} 道题未通过质检，已标红，请修好后再入库`,
           invalidQuestions: invalid.map((q) => ({ id: q.id, stem: q.stem, errors: q.qualityErrors, warnings: q.qualityWarnings }))
         });
       }
-      const { created, skipped } = createQuestionsFromPending(db, selected, { includeVariants: body.includeVariants !== false });
+      const { created, skipped } = createQuestionsFromPending(db, selected, { includeVariants: body.includeVariants !== false, force: Boolean(body.force) });
       ensureQuestionCapacity(db, session, created.length);
       db.questions.unshift(...created);
       db.pendingQuestions = db.pendingQuestions.filter((q) => !(ids.has(q.id) && belongsToTenant(q, session)));
