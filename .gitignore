@@ -1,4 +1,5 @@
 .env
+deploy/docker.env
 data/db.json
 data/.cache/
 uploads/*

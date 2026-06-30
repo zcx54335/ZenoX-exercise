@@ -47,24 +47,71 @@ npm run dev
 
 ## Docker 部署
 
-复制环境变量示例：
+Docker 会直接启动三部分：
 
-```bash
-copy .env.example .env
+- `zenox-exercise`：应用本身
+- `postgres`：题库、待审核、作业、学生、错题等业务数据
+- `minio`：PDF、图片、页面截图、题目配图等文件对象存储
+
+真实配置文件在：
+
+```text
+deploy/docker.env
 ```
 
-编辑 `.env` 后启动：
+这个文件不提交到 Git。第一次使用时先生成：
+
+```bash
+npm run docker:config
+```
+
+脚本会自动生成本机专用的 `APP_SECRET`、管理员密码、PostgreSQL 密码和 MinIO 密码。生成后按需打开 `deploy/docker.env`，填写千问 Key：
+
+```env
+QWEN_API_KEY=你的千问Key
+```
+
+然后启动：
 
 ```bash
 docker compose up -d --build
 ```
 
-数据保存在：
+打开：
 
-- `data/db.json`
-- `uploads/`
+```text
+http://127.0.0.1:8080
+```
 
-这两个目录已经在 `docker-compose.yml` 中挂载为持久化目录。`docker-compose.yml` 也内置了 MinIO，后续切对象存储时可以直接使用。
+Docker 模式默认已经配置好：
+
+```env
+STORAGE_DRIVER=postgres
+DATABASE_URL=postgres://zenox:zenox-password@postgres:5432/zenox_exercise
+FILE_STORAGE_DRIVER=s3
+S3_ENDPOINT=http://minio:9000
+S3_BUCKET=zenox-exercise
+```
+
+数据保存在 Docker volume 中：
+
+- `postgres-data`：数据库
+- `minio-data`：上传文件、页面截图、题目配图
+
+所以换电脑后，代码和配置能直接跑起来；但如果要把“旧电脑已经入库的题目和图片”也带过去，需要额外迁移 Docker volume，或者正式部署时改用云 PostgreSQL + 云对象存储。
+
+MinIO 控制台：
+
+```text
+http://127.0.0.1:9001
+```
+
+账号密码来自 `deploy/docker.env` 的：
+
+```env
+MINIO_ROOT_USER=zenox
+MINIO_ROOT_PASSWORD=脚本生成的密码
+```
 
 ## 存储模式
 

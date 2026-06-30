@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node scripts/start.js",
     "dev": "node scripts/start.js --watch",
+    "docker:config": "node scripts/create-docker-env.js",
     "reset-data": "node scripts/reset-data.js",
     "migrate:postgres": "node scripts/migrate-json-to-postgres.js",
     "migrate:uploads:s3": "node scripts/migrate-uploads-to-s3.js"

@@ -95,6 +95,11 @@
 - 支持 S3-compatible 对象存储：MinIO、阿里 OSS、腾讯 COS、七牛、AWS S3 等。
 - 迁移本地上传文件到对象存储：`npm run migrate:uploads:s3`。
 - Dockerfile、docker-compose、MinIO、PostgreSQL 已配置。
+- Docker 模式默认读取本机 `deploy/docker.env`，并直接使用 PostgreSQL + MinIO：
+  - 业务数据在 Docker volume `postgres-data`。
+  - 上传文件、页面截图、题目配图在 Docker volume `minio-data`。
+  - `deploy/docker.env` 不提交到 Git；用 `npm run docker:config` 在每台电脑生成。
+  - 换电脑后拉代码即可启动同样的服务结构；若要同步旧电脑里的真实题库和图片，需要迁移 Docker volume，或改成外部云 PostgreSQL + 云对象存储。
 - 健康检查：`GET /api/health`。
 
 ### 安全
@@ -222,11 +227,12 @@ ADMIN_PASSWORD=admin123
 ### 5. 如果要用 Docker
 
 ```bash
-cp .env.example .env
+npm run docker:config
+# edit deploy/docker.env and set QWEN_API_KEY if AI is needed
 docker compose up -d --build
 ```
 
-默认会启动：
+默认会启动，并读取 `deploy/docker.env`：
 
 - 应用服务
 - PostgreSQL
@@ -269,4 +275,3 @@ docker compose up -d --build
    - subscriptions
    - invoices
    - payment_events
-
