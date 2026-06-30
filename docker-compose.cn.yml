@@ -1,0 +1,15 @@
+services:
+  zenox-exercise:
+    build:
+      context: .
+      args:
+        NODE_IMAGE: docker.m.daocloud.io/library/node:20-alpine
+
+  postgres:
+    image: docker.m.daocloud.io/library/postgres:16-alpine
+
+  minio:
+    image: docker.m.daocloud.io/minio/minio:latest
+
+  minio-init:
+    image: docker.m.daocloud.io/minio/mc:latest

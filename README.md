@@ -77,6 +77,25 @@ QWEN_API_KEY=你的千问Key
 docker compose up -d --build
 ```
 
+如果在国内网络下 Docker Hub 拉取失败，例如看到：
+
+```text
+failed to fetch anonymous token
+failed to authorize
+```
+
+说明 Docker 没有拉到 `node/postgres/minio` 镜像，不是应用代码报错。可以改用国内镜像覆盖配置：
+
+```bash
+npm run docker:up:cn
+```
+
+等价命令是：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build
+```
+
 打开：
 
 ```text

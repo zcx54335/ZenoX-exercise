@@ -232,6 +232,14 @@ npm run docker:config
 docker compose up -d --build
 ```
 
+If Docker Hub is blocked or slow in China, use the mirror override:
+
+```bash
+npm run docker:up:cn
+```
+
+This uses `docker-compose.cn.yml` to replace `node/postgres/minio` images with mirror URLs.
+
 默认会启动，并读取 `deploy/docker.env`：
 
 - 应用服务
