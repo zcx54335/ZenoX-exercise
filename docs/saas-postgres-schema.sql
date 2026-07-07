@@ -48,6 +48,7 @@ create table if not exists uploads (
   analysis_status text not null default 'ready',
   analysis_error text not null default '',
   analysis_progress jsonb not null default '{}'::jsonb,
+  analysis_diagnostics jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -72,13 +73,18 @@ create table if not exists questions (
   source_filename text not null default '',
   source_page text not null default '',
   question_image_stored_name text not null default '',
+  explanation_image_stored_name text not null default '',
+  question_bbox jsonb,
   variant_of text,
   quality_status text not null default 'ok',
   quality_errors jsonb not null default '[]'::jsonb,
   quality_warnings jsonb not null default '[]'::jsonb,
+  revisions jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table questions add column if not exists explanation_image_stored_name text not null default '';
 
 create table if not exists pending_questions (
   id text primary key,
@@ -183,3 +189,7 @@ create index if not exists idx_uploads_tenant on uploads(tenant_id);
 create index if not exists idx_pending_tenant on pending_questions(tenant_id);
 create index if not exists idx_ai_usage_tenant_month on ai_usage(tenant_id, month);
 create index if not exists idx_audit_tenant_created on audit_logs(tenant_id, created_at desc);
+
+alter table uploads add column if not exists analysis_diagnostics jsonb not null default '{}'::jsonb;
+alter table questions add column if not exists revisions jsonb not null default '[]'::jsonb;
+alter table questions add column if not exists question_bbox jsonb;

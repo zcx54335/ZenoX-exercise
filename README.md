@@ -255,9 +255,63 @@ QWEN_API_KEY=你的Key
 QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 QWEN_MODEL=qwen-plus
 QWEN_VISION_MODEL=qwen-vl-plus
+ALLOW_AI_FREE_VARIANTS=false
+OCR_PROVIDER=qwen
+OCR_LAYOUT_PROVIDER=qwen
+OCR_LAYOUT_ENABLED=true
+OCR_PREPROCESS=true
+PDF_RENDER_DPI=220
+PROMPT_VERSION=analysis-v2
 ```
 
-未配置 `QWEN_API_KEY` 时，上传、拆题、分类编辑、组卷、打印、学生错题仍然可用；AI OCR、AI 分类、AI 出题会提示需要配置 Key。
+`OCR_LAYOUT_ENABLED=true` 会在分析页面时额外调用视觉模型识别题目区域 bbox，自动截图更准，但会多消耗一次视觉分析额度；设为 `false` 时会退回文本行位置估算和人工框选。
+
+`ALLOW_AI_FREE_VARIANTS=false` 表示相似例题默认只走“系统题型模板 + 程序校验 + AI 润色”。模板不足时会直接提示不支持，避免 AI 自由编题产生错题；仅在内部实验时才建议改成 `true`。
+
+未配置 `QWEN_API_KEY` 时，上传、拆题、分类编辑、组卷、打印、学生错题仍然可用；AI OCR、版面坐标识别、AI 分类、AI 出题会提示需要配置 Key。
+
+## AI查题配置
+
+待审核题里有三个来源：
+
+- `AI查题`：按知识点、题型、年级和题干关键词联网搜索相似题，抓取网页正文后尽量抽成题卡，并保留来源链接。
+- `AI生成题`：按系统题型模板生成新题，并做答案校验。
+- `本地题库`：只从你已经入库的题里找相似题。
+
+联网查题默认关闭，需要配置搜索服务。Docker 启动时改 `deploy/docker.env`，本地 `npm start` 启动时改根目录 `.env`：
+
+```env
+WEB_SEARCH_PROVIDER=tavily
+WEB_SEARCH_API_KEY=你的搜索APIKey
+WEB_SEARCH_ENDPOINT=
+WEB_SEARCH_ENGINE=baidu
+WEB_SEARCH_LIMIT=8
+WEB_SEARCH_TIMEOUT_MS=12000
+```
+
+`WEB_SEARCH_PROVIDER` 支持 `tavily`、`bing`、`serpapi`、`custom`。未配置时点击 `AI查题` 会提示需要配置，不会假装查到题。联网结果来自公开网页，系统会尽量抽题干、选项、答案和解析；抽取不到时会显示失败原因。
+
+## 分析诊断
+
+资料分析会保存 `analysisDiagnostics`，用于判断失败原因和后续调优：
+
+- 每页是否被自动跳过
+- 每页文本层是否可靠
+- 哪些页调用了 OCR
+- OCR provider、耗时和图片预处理状态
+- 版面坐标识别出的题目框/图形框数量
+- 本地候选题数、AI 返回题数、最终进入待审核数量
+- 去重跳过数量和失败页
+
+前端上传记录里有“分析诊断”折叠面板，可以展开查看。当前 OCR provider 默认是千问，代码已预留 `Mathpix` provider 插口，后续配置真实 Key 后可以接入。
+
+## 待审核修订
+
+待审核题支持人工合并和拆分：
+
+- 合并上题 / 合并下题：用于 AI 把一道大题拆碎、或跨页题没有合并完整的情况。
+- 拆分：用单独一行 `---` 把当前题拆成多道待审核题。
+- 修订历史：人工编辑、AI 补全、配图更新、合并、拆分都会记录，方便回溯。
 
 ## 当前边界
 

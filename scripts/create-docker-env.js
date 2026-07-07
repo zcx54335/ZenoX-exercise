@@ -22,6 +22,8 @@ const minioPassword = secret(18);
 const appSecret = secret(48);
 const adminPassword = `Zx-${secret(12)}-Admin`;
 const qwenApiKey = process.env.QWEN_API_KEY || "";
+const webSearchProvider = process.env.WEB_SEARCH_PROVIDER || "disabled";
+const webSearchApiKey = process.env.WEB_SEARCH_API_KEY || "";
 
 const content = `# Docker 一键部署配置
 #
@@ -71,6 +73,21 @@ QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 QWEN_MODEL=qwen-plus
 QWEN_VISION_MODEL=qwen-vl-plus
 ALLOW_MISSING_QWEN_API_KEY=true
+ALLOW_AI_FREE_VARIANTS=false
+
+WEB_SEARCH_PROVIDER=${webSearchProvider}
+WEB_SEARCH_API_KEY=${webSearchApiKey}
+WEB_SEARCH_ENDPOINT=
+WEB_SEARCH_ENGINE=baidu
+WEB_SEARCH_LIMIT=8
+WEB_SEARCH_TIMEOUT_MS=12000
+
+OCR_PROVIDER=qwen
+OCR_LAYOUT_PROVIDER=qwen
+OCR_LAYOUT_ENABLED=true
+OCR_PREPROCESS=true
+PDF_RENDER_DPI=220
+PROMPT_VERSION=analysis-v2
 `;
 
 await mkdir(deployDir, { recursive: true });

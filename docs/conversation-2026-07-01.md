@@ -153,6 +153,176 @@ http://127.0.0.1:8080/ -> 200 OK
 3. 进一步实现自动裁剪图形区域，而不是默认整页作为本题图。
 4. 加测试样例，固定住 PDF 拆题、相似去重、双页 OCR、图形题保图这些核心能力。
 
+## 2026-07-01 P0 增量
+
+用户确认范围：先限定小学数学、初中数学/物理/化学/英语；千问优先，预留 Mathpix；默认待审核；允许加 `sharp`；允许新增 pipeline 模块和字段；旧数据兼容；优先做分析诊断和 provider 抽象。
+
+已完成：
+
+- 新增 `server/pipeline/ocr-providers.js`：
+  - 当前 provider：`qwen`。
+  - 预留 provider：`mathpix`，当前未实现真实 API。
+  - OCR 前可用 `sharp` 做自动旋转、灰度、normalize、sharpen。
+- 新增 `server/pipeline/analysis-diagnostics.js`：
+  - 保存每页状态、OCR provider、耗时、候选题数、AI 返回数、入待审核数、跳过/失败原因。
+- 上传记录新增 `analysisDiagnostics` 字段，旧数据自动兼容。
+- PostgreSQL schema 新增 `uploads.analysis_diagnostics`。
+- PDF 渲染 DPI 从硬编码 130 改为 `PDF_RENDER_DPI`，默认 220。
+- 前端上传列表新增“分析诊断”折叠面板。
+- 配置新增：
+  - `OCR_PROVIDER=qwen`
+  - `OCR_PREPROCESS=true`
+  - `PDF_RENDER_DPI=220`
+  - `PROMPT_VERSION=analysis-v2`
+
+## 2026-07-01 审核工作台增量
+
+已完成：
+
+- 待审核题新增 `revisions` 修订历史，旧数据自动兼容。
+- 人工编辑、AI 补全、上传/裁剪配图、合并、拆分都会写入 revision history。
+- 审核卡片新增：
+  - 合并上题
+  - 合并下题
+  - 拆分
+  - 修订历史折叠面板
+- 后端新增接口：
+  - `POST /api/pending-questions/:id/merge`
+  - `POST /api/pending-questions/:id/split`
+- PostgreSQL schema 给 `questions` 增加 `revisions` JSONB 字段。
+
+## 2026-07-01 题目候选截图增量
+
+已完成：
+
+- 后端生成待审核题时，会基于来源页、题目序号和当前页题量自动裁出候选题目截图。
+- 候选截图保存到 `question-images/crops/...`，并写入待审核题的 `questionImageStoredName`。
+- 质检不再把整页来源图当成本题配图；题干出现“如图/图中/阴影”等时，必须绑定独立题图才允许正常入库。
+- 审核页固定展示“本题候选截图”工作区：
+  - 自动候选截图可点击放大核对。
+  - 支持从原页重新框选。
+  - 支持粘贴/拖拽/上传截图覆盖。
+- 手动上传或重新框选的图片会标记为 `questionImageSource=manual`，自动截图标记为 `auto-crop`。
+- 拆分待审核题时，新拆出的题不会复用原题旧图，会重新尝试按序号生成候选截图。
+- 入库时继续保留 `questionImageStoredName`，生成作业和导出时可随题展示图片。
+
+仍需继续优化：
+
+- 目前自动截图是启发式裁剪，不是 OCR 坐标级精准裁剪。
+- 下一步应把 OCR/provider 输出的 bounding box 接进题目切分结果，用真实题目区域裁剪。
+
+## 2026-07-01 坐标题目截图增量
+
+已完成：
+
+- 题目结构新增 `questionBBox`：
+  - `page`
+  - `x/y/width/height`
+  - `imageWidth/imageHeight`
+  - `unit=px`
+  - `source`
+  - `confidence`
+- 自动裁图从“只按题目序号平均切”升级为 bbox 优先：
+  - 优先使用 `questionBBox`。
+  - 其次根据题目在页文本中的行位置生成 `text-layout` bbox。
+  - 最后才回退到旧的 `index-estimate` 分段裁图。
+- AI 抽题 prompt 预留 `bbox` 字段，支持未来视觉模型返回 0-1 归一化坐标。
+- 手动重新框选时，前端会把原页像素坐标一起提交，后端保存为 `questionBBox.source=manual`。
+- 再次打开框选弹窗时，如果题目已有 bbox，会在原页图上显示已有框，方便直接调整。
+- PostgreSQL 关系表 `questions` 新增 `question_bbox jsonb`。
+
+当前边界：
+
+- 当前还没有真正接入带坐标的 OCR provider，所以自动 bbox 主要来自文本行位置估算。
+- 复杂双栏、图文混排、跨页题仍建议人工框选一次；人工框选后的 bbox 是真实坐标。
+
+## 2026-07-01 OCR/版面坐标增量
+
+已完成：
+
+- OCR provider 新增 `recognizeLayout` 接口。
+- 千问视觉 layout provider 会对页面截图输出：
+  - `questionRegions`
+  - `diagramRegions`
+  - 每个区域的 0-1 归一化 bbox
+  - `questionNumber`
+  - `textHint`
+  - `confidence`
+- 分析流程新增 `recognizePageLayouts`：
+  - 上传后直接分析会执行版面坐标识别。
+  - 重新分析后台任务会在 OCR 后、拆题前执行版面坐标识别。
+  - 结果写入 `page.layoutBlocks`。
+- 拆题候选会优先匹配 `page.layoutBlocks.questionRegions`：
+  - 优先按顶层题号匹配。
+  - 其次按同页顺序匹配。
+  - 匹配成功后写入 `questionBBox.source=ocr-layout`。
+- 自动裁图现在优先级为：
+  - 手动 bbox
+  - OCR/视觉 layout bbox
+  - AI 抽题 bbox
+  - 文本行位置 bbox
+  - 题目序号估算 bbox
+- 前端审核卡片会显示 “版面坐标 / 文本坐标 / 估算坐标 / 手动坐标” 来源。
+- 上传诊断面板会显示每页版面框数量或 layout 错误。
+- 新增配置：
+  - `OCR_LAYOUT_PROVIDER=qwen`
+  - `OCR_LAYOUT_ENABLED=true`
+
+当前边界：
+
+- 当前 layout provider 使用千问视觉模型，准确率取决于页面清晰度和模型返回 JSON 的稳定性。
+- 后续可以把 Mathpix / PaddleOCR / PP-Structure 的真实 block 坐标接到同一个 `recognizeLayout` 接口。
+
+## 2026-07-01 资料页简化与附图绑定增量
+
+已完成：
+
+- 资料分析页面简化：
+  - 默认只显示文件名、当前状态、页码范围和开始/重新分析按钮。
+  - 页状态、OCR 诊断、版面框数量统一收进“高级诊断”折叠区。
+  - 默认科目/年级/知识点收进“默认分类”折叠区。
+- 题目附图绑定增强：
+  - `diagramRegions` 会标准化成 `diagramBBoxes`。
+  - 系统会按题号或空间邻近关系把图形/表格/统计图区域归属到题目。
+  - 裁图时会把题目 bbox 与附图 bbox 做 union，尽量让“如图”的图一起进入本题截图。
+  - 审核页新增“自动补截图”按钮，可对单道待审核题重新按 bbox/版面框生成截图。
+  - `revisionSnapshot` 会记录 `diagramBBoxes`，方便追溯。
+
+当前边界：
+
+- 附图归属依赖 layout 模型返回的 `belongsToQuestionNumber` 或空间位置；复杂跨栏图仍可能需要人工重新框选。
+
+## 2026-07-01 产品化六项增量
+
+已完成第一批可运行版本：
+
+- 审核工作台改成更清楚的三块结构：
+  - 左侧：原页参考图，只用于核对和重新框选。
+  - 中间：本题截图，支持自动补截图、手动框选、粘贴和上传替换。
+  - 右侧：题干、选项、答案、解析、知识点等结构化字段。
+- 待审核新增“通过低风险题”：
+  - 仅批量通过没有 `qualityErrors` 且没有 `qualityWarnings` 的题。
+  - 被质检拦截或提示核对的题仍必须逐题处理。
+- 题库新增知识点树：
+  - 按科目、章节/年级、知识点聚合。
+  - 点击知识点可直接跳到题库筛选。
+- 作业导出新增版本：
+  - 学生版：只出题。
+  - 答案版：出题 + 答案。
+  - 解析版：出题 + 答案 + 解析。
+  - Word 导出接口同步支持 `exportMode`。
+- 学生页新增薄弱知识点概览：
+  - 根据错题记录统计每个学生最薄弱知识点。
+  - 同时显示主要错误原因。
+- 运营设置页新增上线准备清单：
+  - AI Key/用量、题库数量、学生错题、作业、多人账号、上传存储等状态一眼可见。
+
+当前边界：
+
+- 知识点树和薄弱分析目前基于已有题目标签与错题记录统计，尚未接入更高级的知识图谱。
+- 低风险批量通过使用现有质量检查结果；后续可以继续增加“图片题必须有截图”“选择题唯一答案”等更严格规则。
+- SaaS 页面目前是运营检查和配置入口，后续还需要真正接支付、套餐限制、机构空间隔离和用量计费。
+
 ## 注意事项
 
 - `.idea/` 和 `data/.tmp/` 是本地文件，不应提交。

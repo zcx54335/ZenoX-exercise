@@ -33,100 +33,69 @@
           </div>
         </div>
         <nav class="nav">
-          <button data-view="dashboard" data-icon="⌘" class="active">数据看板</button>
-          <button data-view="import" data-icon="↥">资料解析</button>
-          <button data-view="bank" data-icon="▦">题库管理</button>
+          <button data-view="import" data-icon="↥" class="active">资料解析</button>
+          <div class="nav-group" data-nav-group="bank">
+            <button class="nav-parent" type="button" data-icon="▦" aria-expanded="false">题库管理</button>
+            <div class="nav-children">
+              <button data-view="bankSearch" data-icon="⌕">题库搜索</button>
+              <button data-view="bankUpload" data-icon="↥">上传题库</button>
+            </div>
+          </div>
           <button data-view="assignments" data-icon="✎">智能组卷</button>
           <button data-view="students" data-icon="◎">学生画像</button>
           <button data-view="settings" data-icon="⚙">系统设置</button>
         </nav>
-        <button id="logoutBtn" class="ghost sidebar-logout">退出登录</button>
+        <div class="sidebar-footer">
+          <div id="topStatus" class="top-status sidebar-plan"></div>
+          <button id="logoutBtn" class="ghost sidebar-logout">退出登录</button>
+        </div>
       </aside>
 
       <section class="workspace">
         <header class="topbar">
           <div>
-            <p class="eyebrow" id="viewEyebrow">今日工作</p>
-            <h2 id="viewTitle">总览</h2>
-          </div>
-          <div class="top-actions">
-            <div id="topStatus" class="top-status"></div>
-            <button id="refreshBtn" class="ghost">刷新</button>
-            <button id="quickPrintBtn" class="primary">导出当前作业</button>
+            <p class="eyebrow" id="viewEyebrow">资料入库</p>
+            <h2 id="viewTitle">资料解析</h2>
           </div>
         </header>
-        <div id="routeTabs" class="route-tabs">
-          <button data-view="dashboard" class="active">数据看板</button>
-          <button data-view="import">资料解析</button>
-          <button data-view="bank">题库管理</button>
-          <button data-view="assignments">智能组卷</button>
-          <button data-view="students">学生画像</button>
-          <button data-view="settings">系统设置</button>
-        </div>
 
-        <section id="dashboard" class="view active">
-          <div class="metrics">
-            <article><span id="metricQuestions">0</span><p>题库题目</p></article>
-            <article><span id="metricStudents">0</span><p>学生档案</p></article>
-            <article><span id="metricAssignments">0</span><p>已生成作业</p></article>
-            <article><span id="metricMistakes">0</span><p>错题记录</p></article>
-          </div>
-          <div class="two-col">
-            <section class="panel">
-              <div class="section-head">
-                <h3>最近动态</h3>
-              </div>
-              <div id="activityList" class="activity"></div>
-            </section>
-            <section class="panel">
-              <div class="section-head">
-                <h3>优先工作流</h3>
-              </div>
-              <div class="workflow">
-                <button data-jump="import">1. 上传 PDF / 图片并拆题</button>
-                <button data-jump="bank">2. 给题目补标签和难度</button>
-                <button data-jump="assignments">3. 选择题目生成作业</button>
-                <button data-jump="students">4. 记录学生错题原因</button>
-              </div>
-            </section>
-          </div>
-        </section>
-
-        <section id="import" class="view">
-          <section class="panel upload-panel upload-workbench">
-            <div class="section-head">
+        <section id="import" class="view active">
+          <details class="feature-guide guide-danger">
+            <summary>
+              <span>操作提示</span>
+              <strong>资料解析怎么用</strong>
+              <em>点击收起/展开</em>
+            </summary>
+            <div class="feature-guide-body">
               <div>
-                <h3>上传资料分析</h3>
-                <p class="muted">上传 PDF、图片或 Word 后，先识别页数，再选择页码范围开始分析。</p>
+                <h3>把 PDF、图片或 Word 拆成待审核题目</h3>
+                <p>先上传资料，选择页码范围，再开始分析。系统会尽量自动拆题、识别配图和知识点，结果先进入待审核。</p>
               </div>
-              <span class="pill">PDF / 图片 / DOCX / 文本</span>
+              <ol>
+                <li>上传文件后先看页数，跳过封面、目录、答案页。</li>
+                <li>分析完成后逐题审核，配图不准就重新框选。</li>
+                <li>质检通过后再入库，避免错题污染题库。</li>
+              </ol>
             </div>
-            <div class="defaults import-defaults">
-              <select id="defaultSubject" aria-label="默认科目">
-                <option>初中数学</option>
-                <option>初中物理</option>
-                <option>初中化学</option>
-                <option>初中英语</option>
-                <option>小学数学</option>
-              </select>
-              <select id="defaultStage" aria-label="默认学段">
-                <option>初中</option>
-                <option>小学</option>
-              </select>
-              <select id="defaultLevel" aria-label="默认难度">
-                <option>基础</option>
-                <option>提高</option>
-                <option>压轴</option>
-              </select>
-              <input id="defaultGrade" placeholder="年级，如 九年级" />
-              <input id="defaultChapter" placeholder="章节" />
-              <input id="defaultKnowledge" placeholder="知识点，逗号分隔" />
+          </details>
+          <section class="panel upload-panel upload-workbench">
+            <div class="hidden" aria-hidden="true">
+              <select id="defaultSubject"><option>初中数学</option><option>初中物理</option><option>初中化学</option><option>初中英语</option><option>小学数学</option></select>
+              <select id="defaultStage"><option>初中</option><option>小学</option></select>
+              <select id="defaultLevel"><option>基础</option><option>提高</option><option>压轴</option></select>
+              <input id="defaultGrade" value="" />
+              <input id="defaultChapter" value="" />
+              <input id="defaultKnowledge" value="" />
             </div>
             <form id="uploadForm" class="upload-form">
               <label class="dropzone">
+                <span class="dropzone-icon">↑</span>
+                <span class="dropzone-copy">
+                  <strong>选择练习资料</strong>
+                  <small>PDF、图片、Word 或文本，上传后选择页码分析。</small>
+                </span>
+                <span id="fileNamePreview" class="file-name-preview">未选择文件</span>
                 <input id="fileInput" name="file" type="file" accept=".pdf,.docx,image/*,text/plain" />
-                <strong>选择一份练习资料</strong>
-                <span>上传后在下方选择页码范围，再点击开始分析。</span>
               </label>
               <button class="primary" type="submit">上传资料</button>
             </form>
@@ -153,51 +122,171 @@
           <section class="panel review-panel-wide">
             <div class="section-head">
               <h3>待审核题目</h3>
-              <div class="row-actions">
-                <span id="reviewCount" class="pill">待审核 0 题</span>
-                <button id="approveAllPendingBtn" class="primary">全部入库</button>
-              </div>
             </div>
             <div id="reviewList" class="review-list"></div>
           </section>
         </section>
 
-        <section id="bank" class="view">
-          <section class="panel">
+        <section id="bankSearch" class="view">
+          <section class="panel bank-workspace">
             <div class="section-head">
-              <h3>题库筛选</h3>
+              <div>
+                <h3>题库搜索</h3>
+                <p class="muted">从正式题库里按题干、知识点、题型和难度找可复用题目。</p>
+              </div>
               <div class="row-actions">
                 <button id="clearSelectionBtn" class="ghost">清空选择</button>
                 <button id="useSelectedBtn" class="primary">用所选生成作业</button>
               </div>
             </div>
-            <div id="bankSummary" class="bank-summary"></div>
-            <div class="filters">
-              <input id="searchInput" placeholder="搜索题干、知识点、章节" />
-              <select id="filterSubject"><option value="">全部科目</option></select>
-              <select id="filterStage"><option value="">全部学段</option><option>小学</option><option>初中</option></select>
-              <select id="filterLevel"><option value="">全部难度</option><option>基础</option><option>提高</option><option>压轴</option></select>
-              <select id="filterType"><option value="">全部题型</option></select>
-              <select id="filterKnowledge"><option value="">全部知识点</option></select>
-              <select id="filterStudent"><option value="">全部学生</option></select>
-              <select id="filterMistakeReason"><option value="">全部错因</option></select>
-              <select id="filterSourceFile"><option value="">全部来源</option></select>
-              <input id="filterSourcePage" placeholder="来源页码" />
-              <select id="filterHasImage"><option value="">是否有图</option><option value="yes">有图</option><option value="no">无图</option></select>
-              <select id="filterUsed"><option value="">是否用过</option><option value="yes">已用过</option><option value="no">未用过</option></select>
+            <div class="bank-search-hero">
+              <div class="bank-search-box">
+                <span>搜索</span>
+                <input id="searchInput" placeholder="输入题干、知识点或章节" />
+              </div>
+              <div id="bankSummary" class="bank-summary"></div>
             </div>
-            <div id="knowledgeChips" class="knowledge-chips"></div>
-            <div id="questionList" class="question-list"></div>
+            <div class="bank-filter-panel">
+              <div class="bank-panel-title">
+                <strong>筛选</strong>
+                <span>默认显示全部题，可按需要缩小范围。</span>
+                <button id="clearBankFiltersBtn" class="ghost compact" type="button">清空筛选</button>
+              </div>
+              <div class="filters">
+                <select id="filterSubject"><option value="">全部科目</option></select>
+                <select id="filterStage"><option value="">全部学段</option><option>小学</option><option>初中</option></select>
+                <select id="filterLevel"><option value="">全部难度</option><option>基础</option><option>提高</option><option>压轴</option></select>
+                <select id="filterType"><option value="">全部题型</option></select>
+                <select id="filterKnowledge"><option value="">全部知识点</option></select>
+              </div>
+            </div>
+            <details class="bank-management-bar">
+              <summary>题库工具</summary>
+              <div class="bank-tool-grid">
+                <div class="row-actions">
+                  <button id="batchEditQuestionsBtn" class="ghost" type="button">批量改字段</button>
+                  <button id="batchDeleteQuestionsBtn" class="danger" type="button">批量删除</button>
+                  <button id="backfillProfilesBtn" class="ghost" type="button">补模板标签</button>
+                  <button id="exportBankBtn" class="ghost" type="button">导出题库</button>
+                </div>
+                <div class="bank-bulk-fields">
+                  <input id="batchKnowledge" placeholder="批量知识点，留空不改" />
+                  <select id="batchLevel"><option value="">难度不改</option><option>基础</option><option>提高</option><option>压轴</option></select>
+                  <select id="batchType"><option value="">题型不改</option><option>选择题</option><option>填空题</option><option>解答题</option><option>判断题</option></select>
+                  <input id="batchChapter" placeholder="批量章节，留空不改" />
+                </div>
+              </div>
+            </details>
+            <div class="bank-browser-layout">
+              <aside class="bank-sidebar">
+                <h4>知识点树</h4>
+                <div id="knowledgeTree" class="knowledge-tree"></div>
+              </aside>
+              <div class="bank-results">
+                <div id="knowledgeChips" class="knowledge-chips"></div>
+                <div id="bankResultHead" class="bank-result-head"></div>
+                <div id="questionList" class="question-list"></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section id="bankUpload" class="view">
+          <section class="panel bank-workspace">
+            <div class="section-head">
+              <div>
+                <h3>上传题库</h3>
+                <p class="muted">先放题目，再补答案，最后设置标签并提交到待审核。</p>
+              </div>
+            </div>
+            <div id="bankImportGrid" class="bank-import-grid">
+              <div class="bank-method-panel">
+                <div class="bank-upload-steps">
+                  <span data-bank-upload-step="1">1 上传题目</span>
+                  <span data-bank-upload-step="2">2 补充答案</span>
+                  <span data-bank-upload-step="3">3 设置标签</span>
+                </div>
+                <div class="bank-method-tabs">
+                  <button class="bank-method-tab active" type="button" data-bank-upload-method="file">上传文件/图片</button>
+                  <button class="bank-method-tab" type="button" data-bank-upload-method="text">直接上传文字</button>
+                </div>
+                <form id="bankUploadForm" class="bank-import-card bank-method-content" data-bank-method-panel="file">
+                  <h4>上传文件/图片</h4>
+                  <p class="muted">先上传 PDF、Word、图片或 TXT，系统生成页码后你再选择要分析的页。</p>
+                  <label class="file-drop">
+                    <input id="bankFileInput" type="file" accept=".pdf,.docx,.txt,image/*" />
+                    <span id="bankFileNamePreview">选择题库文件</span>
+                  </label>
+                  <button class="primary" type="submit">上传并生成页码</button>
+                  <div id="bankPagePicker" class="bank-page-picker hidden"></div>
+                  <div id="bankFileAnswerPanel" class="bank-answer-panel hidden">
+                    <h4>第 2 步：上传答案</h4>
+                    <textarea id="bankFileAnswerText" class="small-textarea" placeholder="题目上传后，在这里粘贴答案、解析或答案页文字。"></textarea>
+                    <div class="bank-step-actions">
+                      <button id="bankFileNextToTagsBtn" class="primary" type="button">下一步：设置标签</button>
+                    </div>
+                  </div>
+                  <p id="bankImportStatus" class="muted">上传后在这里选择页数，不需要手填页码。</p>
+                </form>
+                <form id="bankTextForm" class="bank-import-card bank-method-content hidden" data-bank-method-panel="text">
+                  <h4>直接上传文字</h4>
+                  <p class="muted">把题目文本粘贴进来，系统会拆成待审核题。</p>
+                  <textarea id="bankTextInput" class="small-textarea" placeholder="把多道题粘贴到这里。"></textarea>
+                  <div id="bankTextAnswerPanel" class="bank-answer-panel hidden">
+                    <h4>第 2 步：上传答案</h4>
+                    <textarea id="bankTextAnswerText" class="small-textarea" placeholder="粘贴题目后，在这里粘贴答案或解析。"></textarea>
+                    <div class="bank-step-actions">
+                      <button id="bankTextNextToTagsBtn" class="primary" type="button">下一步：设置标签</button>
+                    </div>
+                  </div>
+                  <p class="muted">补充答案后会进入第 3 步设置标签。</p>
+                </form>
+              </div>
+              <div id="bankDefaultsCard" class="bank-import-card bank-defaults-card hidden">
+                <h4>第 3 步：标签与分类</h4>
+                <div class="bank-defaults-grid">
+                  <label>科目<select id="bankDefaultSubject"><option>初中数学</option><option>小学数学</option><option>初中物理</option><option>初中化学</option><option>初中英语</option></select></label>
+                  <label>学段<select id="bankDefaultStage"><option>初中</option><option>小学</option></select></label>
+                  <label>难度<select id="bankDefaultLevel"><option>基础</option><option>提高</option><option>压轴</option></select></label>
+                  <label>年级<input id="bankDefaultGrade" placeholder="如 九年级" /></label>
+                  <label>题型<select id="bankDefaultType"><option value="">自动识别</option><option>选择题</option><option>填空题</option><option>解答题</option><option>判断题</option></select></label>
+                  <label>来源<input id="bankDefaultSource" placeholder="如 2025 中考专题" /></label>
+                  <label class="full">章节<input id="bankDefaultChapter" placeholder="如 几何综合" /></label>
+                  <label class="full">标签/知识点<input id="bankDefaultKnowledge" list="bankKnowledgeOptions" placeholder="如 旋转，全等，角平分线" /></label>
+                  <datalist id="bankKnowledgeOptions"></datalist>
+                </div>
+                <button id="bankSubmitToReviewBtn" class="primary" type="button">提交到待审核</button>
+              </div>
+            </div>
           </section>
         </section>
 
         <section id="assignments" class="view">
+          <details class="feature-guide guide-info">
+            <summary>
+              <span>操作提示</span>
+              <strong>智能组卷怎么用</strong>
+              <em>点击收起/展开</em>
+            </summary>
+            <div class="feature-guide-body">
+              <div>
+                <h3>用题库题目生成学生作业</h3>
+                <p>可以用题库已选题、按条件自动选题，也可以让 AI 生成同类题。导出时可选择学生版、答案版或解析版。</p>
+              </div>
+              <ol>
+                <li>先从题库勾选题，或在这里按条件自动组卷。</li>
+                <li>填写标题、学生、用时和总分。</li>
+                <li>确认预览后导出 Word 或 PDF。</li>
+              </ol>
+            </div>
+          </details>
           <div class="assignment-layout">
             <section class="panel">
               <div class="section-head">
                 <h3>生成作业</h3>
                 <span id="selectedCount" class="pill">已选 0 题</span>
               </div>
+              <div id="assignmentBasket" class="assignment-basket"></div>
               <div class="form-grid">
                 <label>标题<input id="assignmentTitle" placeholder="例：七年级一次方程周练" /></label>
                 <label>学生<select id="assignmentStudent"></select></label>
@@ -205,6 +294,7 @@
                 <label>年级<input id="assignmentGrade" placeholder="七年级" /></label>
                 <label>用时<input id="assignmentDuration" value="40 分钟" /></label>
                 <label>总分<input id="assignmentScore" value="100" /></label>
+                <label>导出版本<select id="assignmentExportMode"><option value="student">学生版</option><option value="answer">答案版</option><option value="solution">解析版</option></select></label>
               </div>
               <div class="section-head tight">
                 <h3>AI 生成同类题</h3>
@@ -252,6 +342,24 @@
         </section>
 
         <section id="students" class="view">
+          <details class="feature-guide guide-purple">
+            <summary>
+              <span>操作提示</span>
+              <strong>学生画像怎么用</strong>
+              <em>点击收起/展开</em>
+            </summary>
+            <div class="feature-guide-body">
+              <div>
+                <h3>记录学生错题，沉淀薄弱知识点</h3>
+                <p>给每个学生建立档案，把错题和错因记录下来，系统会汇总薄弱知识点，后续可按薄弱点自动选题。</p>
+              </div>
+              <ol>
+                <li>先新增学生档案。</li>
+                <li>每次讲题后记录错题和错因。</li>
+                <li>回到智能组卷，用“按学生薄弱点选题”。</li>
+              </ol>
+            </div>
+          </details>
           <div class="two-col">
             <section class="panel">
               <div class="section-head"><h3>学生档案</h3></div>
@@ -263,6 +371,7 @@
                 <label class="full">备注<input name="notes" /></label>
                 <button class="primary full" type="submit">新增学生</button>
               </form>
+              <div id="studentWeakSummary" class="weak-summary"></div>
               <div id="studentList" class="student-list"></div>
             </section>
 
@@ -287,6 +396,24 @@
         </section>
 
         <section id="settings" class="view">
+          <details class="feature-guide guide-warning">
+            <summary>
+              <span>操作提示</span>
+              <strong>系统设置怎么用</strong>
+              <em>点击收起/展开</em>
+            </summary>
+            <div class="feature-guide-body">
+              <div>
+                <h3>配置部署、AI Key、套餐和运营状态</h3>
+                <p>这里用于产品上线前检查：AI 是否可用、用量是否正常、对象存储和套餐状态是否配置好。</p>
+              </div>
+              <ol>
+                <li>本地或 Docker 启动前先配置环境变量。</li>
+                <li>查看 SaaS 运营状态和上线准备清单。</li>
+                <li>需要商业化时再接真实支付和云存储。</li>
+              </ol>
+            </div>
+          </details>
           <section class="panel prose">
             <h3>部署与 AI 配置</h3>
             <p>复制 <code>.env.example</code> 为 <code>.env</code>，填入管理员密码和千问 API Key，然后用 Docker Compose 启动。</p>
@@ -296,6 +423,7 @@
           <section class="panel tight">
             <div class="section-head"><h3>SaaS 运营状态</h3></div>
             <div id="tenantStatus" class="ops-metrics"></div>
+            <div id="readinessList" class="readiness-list"></div>
           </section>
           <section class="panel tight">
             <div class="section-head"><h3>套餐与用量</h3></div>
@@ -340,12 +468,45 @@
     </main>
 
     <div id="toast" class="toast hidden"></div>
-    <div id="cropModal" class="crop-modal hidden" role="dialog" aria-modal="true" aria-label="框选本题配图">
+    <div id="confirmModal" class="confirm-modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="confirm-dialog">
+        <div class="confirm-icon">!</div>
+        <div class="confirm-content">
+          <h3 id="confirmTitle">确认操作</h3>
+          <p id="confirmText">这个操作需要确认。</p>
+        </div>
+        <div class="confirm-actions">
+          <button id="confirmCancelBtn" class="ghost" type="button">取消</button>
+          <button id="confirmOkBtn" class="danger" type="button">确认</button>
+        </div>
+      </div>
+    </div>
+    <div id="approveModal" class="confirm-modal hidden" role="dialog" aria-modal="true" aria-labelledby="approveTitle">
+      <form id="approveForm" class="approve-dialog">
+        <div class="confirm-content full">
+          <h3 id="approveTitle">入库前填写分类</h3>
+          <p>这些信息会随题目一起保存到题库，方便后面筛选和组卷。</p>
+        </div>
+        <div class="approve-grid full">
+          <label>科目<select id="approveSubject" name="subject"></select></label>
+          <label>学段<select id="approveStage" name="stage"></select></label>
+          <label>难度<select id="approveLevel" name="level"></select></label>
+          <label>题型<select id="approveType" name="type"></select></label>
+          <label>年级<input id="approveGrade" name="grade" placeholder="如 七年级" /></label>
+          <label>章节<input id="approveChapter" name="chapter" placeholder="如 平行线" /></label>
+        </div>
+        <div class="confirm-actions full">
+          <button id="approveCancelBtn" class="ghost" type="button">取消</button>
+          <button class="primary" type="submit">确认入库</button>
+        </div>
+      </form>
+    </div>
+    <div id="cropModal" class="crop-modal hidden" role="dialog" aria-modal="true" aria-label="框选本题区域">
       <div class="crop-dialog">
         <div class="section-head">
           <div>
-            <h3>框选本题配图</h3>
-            <p class="muted">在原页截图上拖拽选择图形区域，保存后会绑定到当前题目。</p>
+            <h3>框选本题区域</h3>
+            <p class="muted">在原页截图上拖拽选择这道题的完整区域，保存后会绑定坐标和题目截图。</p>
           </div>
           <button id="closeCropBtn" class="ghost">关闭</button>
         </div>
@@ -354,8 +515,28 @@
           <div id="cropSelection" class="crop-selection hidden"></div>
         </div>
         <div class="row-actions crop-actions">
-          <button id="saveCropBtn" class="primary">保存配图</button>
+          <button id="saveCropBtn" class="primary">保存截图</button>
           <button id="resetCropBtn" class="ghost">重新框选</button>
+        </div>
+      </div>
+    </div>
+    <div id="imageViewerModal" class="image-viewer-modal hidden" role="dialog" aria-modal="true" aria-labelledby="imageViewerTitle">
+      <div class="image-viewer-dialog">
+        <div class="image-viewer-head">
+          <div>
+            <strong id="imageViewerTitle">图片预览</strong>
+            <p id="imageViewerMeta" class="muted">当前窗口查看</p>
+          </div>
+          <div class="image-viewer-actions">
+            <button id="imageZoomOutBtn" class="ghost" type="button">缩小</button>
+            <button id="imageFitBtn" class="ghost" type="button">适应</button>
+            <button id="imageActualBtn" class="ghost" type="button">原始</button>
+            <button id="imageZoomInBtn" class="ghost" type="button">放大</button>
+            <button id="closeImageViewerBtn" class="ghost image-viewer-close" type="button" aria-label="关闭图片预览">关闭</button>
+          </div>
+        </div>
+        <div id="imageViewerStage" class="image-viewer-stage">
+          <img id="imageViewerImg" alt="图片预览" />
         </div>
       </div>
     </div>
