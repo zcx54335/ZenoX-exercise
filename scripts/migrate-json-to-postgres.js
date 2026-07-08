@@ -26,7 +26,7 @@ if (!existsSync(dbPath)) {
 
 const raw = await fs.readFile(dbPath, "utf8");
 const data = JSON.parse(raw);
-const pool = new Pool({ connectionString: databaseUrl });
+const pool = new Pool({ connectionString: databaseUrl, ssl: postgresSslConfig() });
 
 try {
   const schemaSql = await fs.readFile(schemaPath, "utf8");
@@ -54,4 +54,12 @@ function loadEnvFile() {
     if (process.env[key]) continue;
     process.env[key] = rest.join("=").replace(/^['"]|['"]$/g, "");
   }
+}
+
+function postgresSslConfig() {
+  if (process.env.POSTGRES_SSL === "false") return false;
+  if (process.env.POSTGRES_SSL === "true" || /sslmode=require/i.test(databaseUrl)) {
+    return { rejectUnauthorized: process.env.POSTGRES_SSL_REJECT_UNAUTHORIZED === "true" };
+  }
+  return undefined;
 }

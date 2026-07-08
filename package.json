@@ -10,9 +10,13 @@
     "docker:config": "node scripts/create-docker-env.js",
     "docker:up": "docker compose up -d --build",
     "docker:up:cn": "docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build",
+    "cloud:check": "node scripts/check-cloud-db.js",
+    "postgres:setup": "node scripts/setup-postgres-db.js",
+    "clean:runtime": "node scripts/clean-runtime-data.js",
     "reset-data": "node scripts/reset-data.js",
     "backfill:match-profiles": "node server/index.js --backfill-match-profiles",
     "migrate:postgres": "node scripts/migrate-json-to-postgres.js",
+    "migrate:uploads:postgres": "node scripts/migrate-uploads-to-postgres.js",
     "migrate:uploads:s3": "node scripts/migrate-uploads-to-s3.js"
   },
   "engines": {

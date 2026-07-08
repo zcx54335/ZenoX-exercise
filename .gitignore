@@ -2,8 +2,10 @@
 deploy/docker.env
 data/db.json
 data/.cache/
+data/.tmp/
 uploads/*
 !uploads/.gitkeep
+.idea/
 node_modules/
 .npm-cache/
 npm-debug.log*

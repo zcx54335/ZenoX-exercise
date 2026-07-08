@@ -9,6 +9,14 @@ create table if not exists zenox_app_state (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists zenox_file_objects (
+  key text primary key,
+  content_type text not null default 'application/octet-stream',
+  body bytea not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists organizations (
   id text primary key,
   name text not null,

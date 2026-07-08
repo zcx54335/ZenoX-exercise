@@ -166,6 +166,54 @@ npm run migrate:postgres
 POSTGRES_SYNC_RELATIONAL=false
 ```
 
+## 切到云端数据库
+
+正式使用建议把业务数据放到云端 PostgreSQL，不再依赖本地 `data/db.json`。可使用 Supabase、Neon、阿里云 RDS、腾讯云 PostgreSQL、Railway、Render 等，只要提供标准 PostgreSQL 连接串即可。
+
+`.env` 推荐配置：
+
+```env
+STORAGE_DRIVER=postgres
+DATABASE_URL=postgres://用户名:密码@云数据库地址:5432/数据库名?sslmode=require
+POSTGRES_STATE_ID=zenox-app-state
+POSTGRES_SYNC_RELATIONAL=true
+POSTGRES_SSL=true
+```
+
+连接检查：
+
+```bash
+npm run postgres:setup
+npm run cloud:check
+```
+
+把当前本地 `data/db.json` 迁移到云端 PostgreSQL：
+
+```bash
+npm run migrate:postgres
+npm run migrate:uploads:postgres
+```
+
+迁移完成后重启服务：
+
+```bash
+npm start
+```
+
+打开系统设置页或访问 `GET /api/health`，确认返回里的 `storage` 是 `postgres`。如果 `FILE_STORAGE_DRIVER=postgres`，上传文件、页面截图和题目配图也会写入 PostgreSQL 的 `zenox_file_objects` 表；如果文件较多或体积很大，生产环境也可以改用下方的 S3-compatible 对象存储。
+
+运行时临时文件在 `data/.tmp/`，默认启动时会清理超过 7 天的临时文件。也可以手动清理：
+
+```bash
+npm run clean:runtime
+```
+
+如果要调整保留时间：
+
+```env
+TMP_FILE_TTL_HOURS=168
+```
+
 ## 安全配置
 
 当前后端已经内置这些基础安全能力：

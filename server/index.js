@@ -60,6 +60,7 @@ const S3_PUBLIC_BASE_URL = (process.env.S3_PUBLIC_BASE_URL || "").replace(/\/$/,
 const COOKIE_SECURE = process.env.COOKIE_SECURE === "true" || IS_PRODUCTION;
 const MAX_UPLOAD_MB = Number(process.env.MAX_UPLOAD_MB || 80);
 const MAX_IMAGE_UPLOAD_MB = Number(process.env.MAX_IMAGE_UPLOAD_MB || 12);
+const TMP_FILE_TTL_HOURS = Number(process.env.TMP_FILE_TTL_HOURS || 168);
 const MAX_WEB_QUESTION_IMAGE_BYTES = Math.min(MAX_IMAGE_UPLOAD_MB * 1024 * 1024, Number(process.env.MAX_WEB_QUESTION_IMAGE_BYTES || 5 * 1024 * 1024));
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
 const API_RATE_LIMIT = Number(process.env.API_RATE_LIMIT || 240);
@@ -188,10 +189,18 @@ await fs.mkdir(dataDir, { recursive: true });
 await fs.mkdir(uploadDir, { recursive: true });
 await fs.mkdir(pageImageDir, { recursive: true });
 await fs.mkdir(questionImageDir, { recursive: true });
-initObjectStorage();
+await cleanupRuntimeTmp();
 await initDbStorage();
+await initObjectStorage();
 
 function initObjectStorage() {
+  if (FILE_STORAGE_DRIVER === "postgres") {
+    if (STORAGE_DRIVER !== "postgres" || !pgPool) {
+      throw new Error("FILE_STORAGE_DRIVER=postgres 需要同时配置 STORAGE_DRIVER=postgres 和 DATABASE_URL");
+    }
+    console.log(`Using PostgreSQL file object storage: ${POSTGRES_STATE_ID}`);
+    return;
+  }
   if (FILE_STORAGE_DRIVER !== "s3") {
     console.log(`Using local file storage: ${uploadDir}`);
     return;
@@ -223,6 +232,9 @@ function validateStartupConfig() {
   if (STORAGE_DRIVER === "postgres" && !process.env.DATABASE_URL) {
     errors.push("STORAGE_DRIVER=postgres 时必须配置 DATABASE_URL");
   }
+  if (FILE_STORAGE_DRIVER === "postgres" && STORAGE_DRIVER !== "postgres") {
+    errors.push("FILE_STORAGE_DRIVER=postgres 需要同时配置 STORAGE_DRIVER=postgres");
+  }
   if (FILE_STORAGE_DRIVER === "s3") {
     if (!S3_BUCKET) errors.push("FILE_STORAGE_DRIVER=s3 时必须配置 S3_BUCKET");
     if (!process.env.S3_ACCESS_KEY_ID) errors.push("FILE_STORAGE_DRIVER=s3 时必须配置 S3_ACCESS_KEY_ID");
@@ -234,6 +246,47 @@ function validateStartupConfig() {
   if (errors.length) {
     throw new Error(`生产环境配置不完整：\n- ${errors.join("\n- ")}`);
   }
+}
+
+function postgresSslConfig() {
+  if (process.env.POSTGRES_SSL === "false") return false;
+  if (process.env.POSTGRES_SSL === "true" || /sslmode=require/i.test(process.env.DATABASE_URL || "")) {
+    return { rejectUnauthorized: process.env.POSTGRES_SSL_REJECT_UNAUTHORIZED === "true" };
+  }
+  return undefined;
+}
+
+async function cleanupRuntimeTmp() {
+  if (!Number.isFinite(TMP_FILE_TTL_HOURS) || TMP_FILE_TTL_HOURS <= 0) return;
+  const tmpDir = path.join(dataDir, ".tmp");
+  const resolvedTmp = path.resolve(tmpDir);
+  if (!resolvedTmp.startsWith(path.resolve(dataDir))) return;
+  const cutoff = Date.now() - TMP_FILE_TTL_HOURS * 60 * 60 * 1000;
+  let removed = 0;
+  async function visit(dir) {
+    let entries = [];
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const target = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await visit(target);
+        await fs.rmdir(target).catch(() => {});
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const stat = await fs.stat(target).catch(() => null);
+      if (stat && stat.mtimeMs < cutoff) {
+        await fs.rm(target, { force: true });
+        removed += 1;
+      }
+    }
+  }
+  await visit(resolvedTmp);
+  if (removed) console.log(`Cleaned ${removed} expired runtime temp files from ${resolvedTmp}`);
 }
 
 function legacyHashPassword(password = "") {
@@ -492,10 +545,11 @@ async function initDbStorage() {
   if (STORAGE_DRIVER === "postgres") {
     if (!process.env.DATABASE_URL) throw new Error("STORAGE_DRIVER=postgres 时必须配置 DATABASE_URL");
     const { Pool } = await import("pg");
-    pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
+    pgPool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: postgresSslConfig() });
     if (POSTGRES_SYNC_RELATIONAL) {
       await applyPostgresRelationalSchema();
     }
+    await applyPostgresObjectSchema();
     await pgPool.query(`
       create table if not exists zenox_app_state (
         id text primary key,
@@ -523,6 +577,18 @@ async function initDbStorage() {
     await fs.writeFile(dbPath, JSON.stringify(seedDb, null, 2), "utf8");
   }
   console.log(`Using JSON storage: ${dbPath}`);
+}
+
+async function applyPostgresObjectSchema() {
+  await pgPool.query(`
+    create table if not exists zenox_file_objects (
+      key text primary key,
+      content_type text not null default 'application/octet-stream',
+      body bytea not null,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    )
+  `);
 }
 
 async function applyPostgresRelationalSchema() {
@@ -1035,6 +1101,18 @@ async function streamToBuffer(stream) {
 
 async function saveObject(name, buffer, contentType = "application/octet-stream") {
   const key = objectKey(name);
+  if (FILE_STORAGE_DRIVER === "postgres") {
+    await pgPool.query(
+      `insert into zenox_file_objects (key, content_type, body, updated_at)
+       values ($1, $2, $3, now())
+       on conflict (key) do update
+       set content_type = excluded.content_type,
+           body = excluded.body,
+           updated_at = now()`,
+      [key, contentType, Buffer.from(buffer)]
+    );
+    return key;
+  }
   if (FILE_STORAGE_DRIVER === "s3") {
     await s3Client.send(new PutObjectCommand({
       Bucket: S3_BUCKET,
@@ -1052,6 +1130,11 @@ async function saveObject(name, buffer, contentType = "application/octet-stream"
 
 async function readObject(name) {
   const key = objectKey(name);
+  if (FILE_STORAGE_DRIVER === "postgres") {
+    const result = await pgPool.query("select body from zenox_file_objects where key = $1", [key]);
+    if (!result.rowCount) throw new Error("Object not found");
+    return Buffer.from(result.rows[0].body);
+  }
   if (FILE_STORAGE_DRIVER === "s3") {
     const result = await s3Client.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: key }));
     return streamToBuffer(result.Body);
@@ -1061,6 +1144,10 @@ async function readObject(name) {
 
 async function deleteObject(name) {
   const key = objectKey(name);
+  if (FILE_STORAGE_DRIVER === "postgres") {
+    await pgPool.query("delete from zenox_file_objects where key = $1", [key]).catch(() => {});
+    return;
+  }
   if (FILE_STORAGE_DRIVER === "s3") {
     await s3Client.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key })).catch(() => {});
     return;
@@ -11970,6 +12057,16 @@ async function handleApi(req, res, pathname) {
       return json(res, 200, { mistake });
     }
 
+    if (mistakeMatch && req.method === "DELETE") {
+      const db = await readDb();
+      const before = db.mistakes.length;
+      db.mistakes = db.mistakes.filter((m) => !(m.id === mistakeMatch[1] && belongsToTenant(m, session)));
+      if (db.mistakes.length === before) return json(res, 404, { error: "错题记录不存在" });
+      addAuditLog(db, session, "mistake.delete", "mistake", mistakeMatch[1], "删除错题记录");
+      await writeDb(db);
+      return json(res, 200, { ok: true });
+    }
+
     if (pathname === "/api/assignments" && req.method === "POST") {
       const body = await readJson(req);
       const db = await readDb();
@@ -11991,6 +12088,17 @@ async function handleApi(req, res, pathname) {
       addAuditLog(db, session, "assignment.create", "assignment", assignment.id, assignment.title);
       await writeDb(db);
       return json(res, 201, { assignment });
+    }
+
+    const assignmentMatch = pathname.match(/^\/api\/assignments\/([^/]+)$/);
+    if (assignmentMatch && req.method === "DELETE") {
+      const db = await readDb();
+      const before = db.assignments.length;
+      db.assignments = db.assignments.filter((assignment) => !(assignment.id === assignmentMatch[1] && belongsToTenant(assignment, session)));
+      if (db.assignments.length === before) return json(res, 404, { error: "作业不存在" });
+      addAuditLog(db, session, "assignment.delete", "assignment", assignmentMatch[1], "删除作业");
+      await writeDb(db);
+      return json(res, 200, { ok: true });
     }
 
     if (pathname === "/api/assignments/export-word" && req.method === "POST") {

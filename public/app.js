@@ -18,6 +18,8 @@ const state = {
   reviewPageSize: 1,
   reviewIndexScrollTop: 0,
   bankIssueFilter: "",
+  bankPage: 1,
+  bankPageSize: Number(window.ZENOX_CONFIG?.bankPageSize || 20),
   bankUploadId: "",
   bankNavOpen: false,
   bankUploadMethod: "file",
@@ -45,10 +47,10 @@ const imageViewerState = {
   scrollTop: 0
 };
 
-const subjects = ["初中数学", "初中物理", "初中化学", "初中英语", "小学数学"];
-const stages = ["小学", "初中"];
-const levels = ["基础", "提高", "压轴"];
-const types = ["选择题", "填空题", "解答题", "判断题", "完形填空", "阅读理解", "作文", "实验题", "计算题", "未分类"];
+const subjects = window.ZENOX_CONFIG?.subjects || ["初中数学", "初中物理", "初中化学", "初中英语", "小学数学"];
+const stages = window.ZENOX_CONFIG?.stages || ["小学", "初中"];
+const levels = window.ZENOX_CONFIG?.levels || ["基础", "提高", "压轴"];
+const types = window.ZENOX_CONFIG?.questionTypes || ["选择题", "填空题", "解答题", "判断题", "完形填空", "阅读理解", "作文", "实验题", "计算题", "未分类"];
 
 const titles = {
   import: ["资料入库", "资料解析"],
@@ -330,6 +332,7 @@ function renderAll() {
   renderStudents();
   renderMistakes();
   renderAssignmentControls();
+  renderAssignmentHistory();
   renderPaper();
   renderSettings();
   requestAnimationFrame(() => autoFitTextareas(document));
@@ -1188,40 +1191,6 @@ function renderBankSummary() {
         .join("")
       : "";
   }
-  renderKnowledgeTree();
-}
-
-function renderKnowledgeTree() {
-  const tree = $("#knowledgeTree");
-  if (!tree) return;
-  const grouped = new Map();
-  for (const q of state.db.questions || []) {
-    const subject = q.subject || "未分类";
-    const chapter = q.chapter || q.grade || "未分章节";
-    if (!grouped.has(subject)) grouped.set(subject, new Map());
-    const chapters = grouped.get(subject);
-    if (!chapters.has(chapter)) chapters.set(chapter, new Map());
-    const tags = (q.knowledge || []).length ? q.knowledge : ["未标知识点"];
-    for (const tag of tags) {
-      const counts = chapters.get(chapter);
-      counts.set(tag, (counts.get(tag) || 0) + 1);
-    }
-  }
-  tree.innerHTML = grouped.size ? [...grouped.entries()].map(([subject, chapters]) => `
-    <details class="knowledge-node">
-      <summary>${escapeHtml(subject)} <span>${[...chapters.values()].reduce((sum, tags) => sum + [...tags.values()].reduce((a, b) => a + b, 0), 0)}</span></summary>
-      ${[...chapters.entries()].map(([chapter, tags]) => `
-        <details>
-          <summary>${escapeHtml(chapter)} <span>${[...tags.values()].reduce((a, b) => a + b, 0)}</span></summary>
-          <div class="knowledge-leaves">
-            ${[...tags.entries()].sort((a, b) => b[1] - a[1]).map(([tag, count]) => `
-              <button type="button" data-knowledge-chip="${escapeHtml(tag)}" class="${$("#filterKnowledge").value === tag ? "active" : ""}">${escapeHtml(tag)} <span>${count}</span></button>
-            `).join("")}
-          </div>
-        </details>
-      `).join("")}
-    </details>
-  `).join("") : `<p class="muted">题目入库后会自动形成知识点树。</p>`;
 }
 
 function fillSelect(select, values, firstIsEmpty = false) {
@@ -1253,6 +1222,11 @@ function questionMatches(q) {
 function renderQuestionList() {
   const list = state.db.questions.filter(questionMatches);
   const all = state.db.questions || [];
+  const totalPages = Math.max(1, Math.ceil(list.length / state.bankPageSize));
+  if (state.bankPage < 1) state.bankPage = 1;
+  if (state.bankPage > totalPages) state.bankPage = totalPages;
+  const start = (state.bankPage - 1) * state.bankPageSize;
+  const pageItems = list.slice(start, start + state.bankPageSize);
   const head = $("#bankResultHead");
   if (head) {
     const selected = selectedQuestions().length;
@@ -1260,17 +1234,32 @@ function renderQuestionList() {
     head.innerHTML = `
       <div>
         <strong>搜索结果 ${numberText(list.length)} 道${knowledge ? ` · ${escapeHtml(knowledge)}` : ""}</strong>
-        <span>勾选题目后可以生成作业；编辑只影响正式题库。</span>
+        <span>${list.length ? `当前显示 ${numberText(start + 1)}-${numberText(Math.min(start + pageItems.length, list.length))} 道；` : ""}勾选题目后可以生成作业。</span>
       </div>
-      <span class="pill">已选 ${numberText(selected)} 题</span>
+      <div class="bank-head-actions">
+        <span class="pill">已选 ${numberText(selected)} 题</span>
+        ${list.length > state.bankPageSize ? `<span class="pill">第 ${numberText(state.bankPage)} / ${numberText(totalPages)} 页</span>` : ""}
+      </div>
     `;
   }
   $("#questionList").innerHTML = list.length
-    ? list.map((q) => questionCard(q)).join("")
+    ? pageItems.map((q) => questionCard(q)).join("") + bankPagination(list.length, totalPages)
     : all.length
       ? `<div class="bank-empty-state"><strong>没有匹配题目</strong><span>可以清空筛选，或换一个知识点、题型、难度再试。</span><button class="ghost compact" type="button" data-clear-bank-filters>清空筛选</button></div>`
       : `<div class="bank-empty-state"><strong>题库还是空的</strong><span>先去上传题库，审核入库后这里才能搜索和组卷。</span><button class="primary compact" type="button" data-view="bankUpload">上传题库</button></div>`;
   $("#selectedCount").textContent = `已选 ${selectedQuestions().length} 题`;
+}
+
+function bankPagination(total, totalPages) {
+  if (total <= state.bankPageSize) return "";
+  const page = state.bankPage;
+  return `
+    <div class="bank-pagination">
+      <button class="ghost compact" type="button" data-bank-page="prev" ${page <= 1 ? "disabled" : ""}>上一页</button>
+      <span>第 ${numberText(page)} / ${numberText(totalPages)} 页 · 每页 ${numberText(state.bankPageSize)} 道</span>
+      <button class="ghost compact" type="button" data-bank-page="next" ${page >= totalPages ? "disabled" : ""}>下一页</button>
+    </div>
+  `;
 }
 
 function clearBankFilters() {
@@ -1283,6 +1272,7 @@ function clearBankFilters() {
     input.value = "";
   });
   state.bankIssueFilter = "";
+  state.bankPage = 1;
   renderBankSummary();
   renderQuestionList();
 }
@@ -1354,10 +1344,27 @@ function renderSplitPreview() {
 function renderStudents() {
   $("#studentList").innerHTML = state.db.students.length
     ? state.db.students.map((s) => `
-      <div class="student-item">
-        <strong>${escapeHtml(s.name)}</strong>
+      <div class="student-item" data-student-id="${escapeHtml(s.id)}">
+        <div class="item-head">
+          <strong>${escapeHtml(s.name)}</strong>
+          <div class="row-actions compact-actions">
+            <button class="ghost edit-student" type="button">编辑</button>
+            <button class="ghost delete-student" type="button">删除</button>
+          </div>
+        </div>
         <p class="muted">${escapeHtml([s.stage, s.grade, s.level].filter(Boolean).join(" / "))}</p>
         <span class="tag">${escapeHtml(s.notes || "无备注")}</span>
+        <form class="student-editor form-grid">
+          <label>姓名<input name="name" value="${escapeHtml(s.name)}" required /></label>
+          <label>学段<select name="stage"><option ${s.stage === "小学" ? "selected" : ""}>小学</option><option ${s.stage === "初中" ? "selected" : ""}>初中</option></select></label>
+          <label>年级<input name="grade" value="${escapeHtml(s.grade || "")}" /></label>
+          <label>水平<select name="level"><option ${s.level === "基础" ? "selected" : ""}>基础</option><option ${s.level === "提高" ? "selected" : ""}>提高</option><option ${s.level === "压轴" ? "selected" : ""}>压轴</option></select></label>
+          <label class="full">备注<input name="notes" value="${escapeHtml(s.notes || "")}" /></label>
+          <div class="row-actions full">
+            <button class="primary" type="submit">保存学生</button>
+            <button class="ghost cancel-student-edit" type="button">取消</button>
+          </div>
+        </form>
       </div>
     `).join("")
     : `<p class="muted">还没有学生档案。</p>`;
@@ -1407,12 +1414,19 @@ function renderMistakes() {
       const student = state.db.students.find((s) => s.id === m.studentId);
       const question = state.db.questions.find((q) => q.id === m.questionId);
       return `
-        <div class="mistake-item">
-          <strong>${escapeHtml(student?.name || "未指定学生")}</strong>
+        <div class="mistake-item ${m.resolved ? "resolved" : ""}" data-mistake-id="${escapeHtml(m.id)}">
+          <div class="item-head">
+            <strong>${escapeHtml(student?.name || "未指定学生")}</strong>
+            <div class="row-actions compact-actions">
+              <button class="ghost toggle-mistake-resolved" type="button">${m.resolved ? "标为未掌握" : "标记掌握"}</button>
+              <button class="ghost delete-mistake" type="button">删除</button>
+            </div>
+          </div>
           <p>${escapeHtml(question?.stem || "题目已删除")}</p>
           <div class="tag-row">
             <span class="tag">${escapeHtml(m.reason)}</span>
             <span class="tag">${escapeHtml(m.date)}</span>
+            ${m.resolved ? `<span class="tag quality-ok-tag">已掌握</span>` : ""}
           </div>
           ${m.note ? `<p class="muted">${escapeHtml(m.note)}</p>` : ""}
         </div>
@@ -1440,6 +1454,32 @@ function renderAssignmentControls() {
       : `<p class="muted">可以从“资料解析”的待审核题直接加入，也可以从题库勾选题目混合组卷。</p>`;
   }
   if (!$("#assignmentTitle").value) $("#assignmentTitle").value = `课后练习 ${new Date().toLocaleDateString("zh-CN")}`;
+}
+
+function renderAssignmentHistory() {
+  const box = $("#assignmentHistory");
+  if (!box) return;
+  const rows = state.db.assignments || [];
+  box.innerHTML = `
+    <div class="section-head tight">
+      <h3>历史作业</h3>
+      <span class="pill">${numberText(rows.length)} 份</span>
+    </div>
+    ${rows.length ? `<div class="history-list">
+      ${rows.slice(0, 12).map((assignment) => `
+        <article class="history-item" data-assignment-id="${escapeHtml(assignment.id)}">
+          <div>
+            <strong>${escapeHtml(assignment.title || "未命名作业")}</strong>
+            <span>${escapeHtml([assignment.studentName, assignment.subject, assignment.grade].filter(Boolean).join(" / ") || "未填写信息")}</span>
+          </div>
+          <div class="row-actions compact-actions">
+            <button class="ghost load-assignment" type="button">载入</button>
+            <button class="ghost delete-assignment" type="button">删除</button>
+          </div>
+        </article>
+      `).join("")}
+    </div>` : `<p class="muted">保存作业后会出现在这里，方便再次载入和导出。</p>`}
+  `;
 }
 
 function pendingQuestionSnapshots() {
@@ -1583,6 +1623,25 @@ function printCurrentAssignment() {
     paper?.scrollIntoView({ block: "start" });
     setTimeout(() => window.print(), 120);
   });
+}
+
+function loadAssignment(assignment = {}) {
+  $("#assignmentTitle").value = assignment.title || "";
+  $("#assignmentStudent").value = assignment.studentId || "";
+  $("#assignmentSubject").value = assignment.subject || "";
+  $("#assignmentGrade").value = assignment.grade || "";
+  $("#assignmentDuration").value = assignment.duration || "40 分钟";
+  $("#assignmentScore").value = assignment.score || "100";
+  if ($("#assignmentExportMode")) $("#assignmentExportMode").value = assignment.exportMode || "student";
+  state.selected = new Set(Array.isArray(assignment.questionIds) ? assignment.questionIds : []);
+  state.selectedPending.clear();
+  state.generatedQuestions = Array.isArray(assignment.generatedQuestions) ? assignment.generatedQuestions : [];
+  state.view = "assignments";
+  renderChrome();
+  renderBankSummary();
+  renderQuestionList();
+  renderAssignmentControls();
+  renderPaper();
 }
 
 function formObject(form) {
@@ -2217,7 +2276,16 @@ async function createAssignment() {
     method: "POST",
     body: assignmentPayload()
   });
+  const keepSelected = new Set(state.selected);
+  const keepSelectedPending = new Set(state.selectedPending);
+  const keepGeneratedQuestions = [...state.generatedQuestions];
   await loadState();
+  state.selected = keepSelected;
+  state.selectedPending = keepSelectedPending;
+  state.generatedQuestions = keepGeneratedQuestions;
+  renderAssignmentControls();
+  renderAssignmentHistory();
+  renderPaper();
   toast(`已保存作业：${payload.assignment.title}`);
 }
 
@@ -2314,6 +2382,104 @@ document.addEventListener("click", async (event) => {
   if (clearBank) {
     event.preventDefault();
     clearBankFilters();
+    return;
+  }
+
+  const bankPage = event.target.closest("[data-bank-page]");
+  if (bankPage) {
+    event.preventDefault();
+    const total = state.db.questions.filter(questionMatches).length;
+    const totalPages = Math.max(1, Math.ceil(total / state.bankPageSize));
+    state.bankPage = bankPage.dataset.bankPage === "prev"
+      ? Math.max(1, state.bankPage - 1)
+      : Math.min(totalPages, state.bankPage + 1);
+    renderQuestionList();
+    $("#bankResultHead")?.scrollIntoView({ block: "nearest" });
+    return;
+  }
+
+  const assignmentItem = event.target.closest("[data-assignment-id]");
+  if (assignmentItem && event.target.matches(".load-assignment")) {
+    event.preventDefault();
+    const assignment = (state.db.assignments || []).find((item) => item.id === assignmentItem.dataset.assignmentId);
+    if (!assignment) return toast("作业不存在或已删除");
+    loadAssignment(assignment);
+    toast("作业已载入");
+    return;
+  }
+
+  if (assignmentItem && event.target.matches(".delete-assignment")) {
+    event.preventDefault();
+    const assignment = (state.db.assignments || []).find((item) => item.id === assignmentItem.dataset.assignmentId);
+    const ok = await confirmAction({
+      title: "删除这份作业？",
+      text: assignment?.title || "删除后不会影响题库里的题目。",
+      confirmText: "删除",
+      cancelText: "取消"
+    });
+    if (!ok) return;
+    await api(`/api/assignments/${assignmentItem.dataset.assignmentId}`, { method: "DELETE" });
+    await loadState();
+    renderAssignmentHistory();
+    toast("作业已删除");
+    return;
+  }
+
+  const studentItem = event.target.closest("[data-student-id]");
+  if (studentItem && event.target.matches(".edit-student")) {
+    event.preventDefault();
+    studentItem.classList.toggle("editing");
+    return;
+  }
+
+  if (studentItem && event.target.matches(".cancel-student-edit")) {
+    event.preventDefault();
+    studentItem.classList.remove("editing");
+    return;
+  }
+
+  if (studentItem && event.target.matches(".delete-student")) {
+    event.preventDefault();
+    const student = (state.db.students || []).find((item) => item.id === studentItem.dataset.studentId);
+    const ok = await confirmAction({
+      title: "删除这个学生？",
+      text: student?.name || "删除后不会删除题库题目。",
+      confirmText: "删除",
+      cancelText: "取消"
+    });
+    if (!ok) return;
+    await api(`/api/students/${studentItem.dataset.studentId}`, { method: "DELETE" });
+    await loadState();
+    toast("学生已删除");
+    return;
+  }
+
+  const mistakeItem = event.target.closest("[data-mistake-id]");
+  if (mistakeItem && event.target.matches(".toggle-mistake-resolved")) {
+    event.preventDefault();
+    const mistake = (state.db.mistakes || []).find((item) => item.id === mistakeItem.dataset.mistakeId);
+    if (!mistake) return toast("错题记录不存在或已删除");
+    await api(`/api/mistakes/${mistake.id}`, {
+      method: "PATCH",
+      body: { resolved: !mistake.resolved }
+    });
+    await loadState();
+    toast(mistake.resolved ? "已标为未掌握" : "已标记掌握");
+    return;
+  }
+
+  if (mistakeItem && event.target.matches(".delete-mistake")) {
+    event.preventDefault();
+    const ok = await confirmAction({
+      title: "删除这条错题记录？",
+      text: "删除后不会影响题库里的题目。",
+      confirmText: "删除",
+      cancelText: "取消"
+    });
+    if (!ok) return;
+    await api(`/api/mistakes/${mistakeItem.dataset.mistakeId}`, { method: "DELETE" });
+    await loadState();
+    toast("错题记录已删除");
     return;
   }
 
@@ -2793,6 +2959,7 @@ document.addEventListener("change", (event) => {
     renderReviewList();
   }
   if (event.target.closest(".filters") || event.target.id === "searchInput") {
+    state.bankPage = 1;
     renderBankSummary();
     renderQuestionList();
   }
@@ -2857,6 +3024,7 @@ document.addEventListener("drop", (event) => {
 
 document.addEventListener("input", (event) => {
   if (event.target.closest(".filters") || event.target.id === "searchInput") {
+    state.bankPage = 1;
     renderBankSummary();
     renderQuestionList();
   }
@@ -3058,6 +3226,22 @@ document.addEventListener("submit", async (event) => {
   if (event.target.matches(".pending-editor")) {
     event.preventDefault();
     toast("修改会在入库本题时自动保存");
+    return;
+  }
+
+  if (event.target.matches(".student-editor")) {
+    event.preventDefault();
+    const item = event.target.closest(".student-item");
+    try {
+      await api(`/api/students/${item.dataset.studentId}`, {
+        method: "PATCH",
+        body: formObject(event.target)
+      });
+      await loadState();
+      toast("学生已保存");
+    } catch (error) {
+      toast(error.message);
+    }
     return;
   }
 

@@ -488,6 +488,20 @@ button {
   gap: 8px;
   align-items: center;
 }
+.compact-actions {
+  justify-content: flex-end;
+  gap: 6px;
+}
+.item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.item-head > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1306,7 +1320,7 @@ button:disabled {
 }
 .bank-browser-layout {
   display: grid;
-  grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -2403,6 +2417,21 @@ button.compact {
 .bank-results .question-list {
   gap: 8px;
 }
+.bank-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.bank-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 0 2px;
+  color: var(--muted);
+  font-size: 14px;
+}
 .bank-results .question-item {
   grid-template-columns: auto minmax(0, 1fr) auto;
   padding: 12px;
@@ -2532,6 +2561,48 @@ button.compact {
 }
 .question-editor textarea {
   min-height: 86px;
+}
+.student-editor {
+  display: none;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.student-item.editing .student-editor {
+  display: grid;
+}
+.mistake-item.resolved {
+  background: #f7fffb;
+  border-color: #b7ebc6;
+}
+.assignment-history {
+  margin-top: 18px;
+}
+.history-list {
+  display: grid;
+  gap: 8px;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.history-item div:first-child {
+  min-width: 0;
+}
+.history-item strong,
+.history-item span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.history-item span {
+  color: var(--muted);
+  font-size: 13px;
 }
 .assignment-layout {
   display: grid;
@@ -3003,6 +3074,16 @@ pre {
     width: 100%;
   }
   .question-item { grid-template-columns: 1fr; }
+  .bank-head-actions,
+  .bank-pagination,
+  .history-item,
+  .item-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .compact-actions {
+    justify-content: flex-start;
+  }
   .review-index {
     grid-auto-columns: minmax(140px, 86vw);
   }

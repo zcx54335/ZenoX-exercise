@@ -34,7 +34,7 @@ if ((process.env.STORAGE_DRIVER || "").toLowerCase() === "postgres") {
   const { Pool } = await import("pg");
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("STORAGE_DRIVER=postgres 时必须配置 DATABASE_URL");
-  const pool = new Pool({ connectionString: databaseUrl });
+  const pool = new Pool({ connectionString: databaseUrl, ssl: postgresSslConfig(databaseUrl) });
   try {
     const schemaSql = await fs.readFile(schemaPath, "utf8");
     await pool.query(schemaSql);
@@ -80,4 +80,12 @@ function loadEnvFile() {
     if (process.env[key]) continue;
     process.env[key] = rest.join("=").replace(/^['"]|['"]$/g, "");
   }
+}
+
+function postgresSslConfig(databaseUrl = "") {
+  if (process.env.POSTGRES_SSL === "false") return false;
+  if (process.env.POSTGRES_SSL === "true" || /sslmode=require/i.test(databaseUrl)) {
+    return { rejectUnauthorized: process.env.POSTGRES_SSL_REJECT_UNAUTHORIZED === "true" };
+  }
+  return undefined;
 }

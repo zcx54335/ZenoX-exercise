@@ -160,28 +160,7 @@
                 <select id="filterKnowledge"><option value="">全部知识点</option></select>
               </div>
             </div>
-            <details class="bank-management-bar">
-              <summary>题库工具</summary>
-              <div class="bank-tool-grid">
-                <div class="row-actions">
-                  <button id="batchEditQuestionsBtn" class="ghost" type="button">批量改字段</button>
-                  <button id="batchDeleteQuestionsBtn" class="danger" type="button">批量删除</button>
-                  <button id="backfillProfilesBtn" class="ghost" type="button">补模板标签</button>
-                  <button id="exportBankBtn" class="ghost" type="button">导出题库</button>
-                </div>
-                <div class="bank-bulk-fields">
-                  <input id="batchKnowledge" placeholder="批量知识点，留空不改" />
-                  <select id="batchLevel"><option value="">难度不改</option><option>基础</option><option>提高</option><option>压轴</option></select>
-                  <select id="batchType"><option value="">题型不改</option><option>选择题</option><option>填空题</option><option>解答题</option><option>判断题</option></select>
-                  <input id="batchChapter" placeholder="批量章节，留空不改" />
-                </div>
-              </div>
-            </details>
             <div class="bank-browser-layout">
-              <aside class="bank-sidebar">
-                <h4>知识点树</h4>
-                <div id="knowledgeTree" class="knowledge-tree"></div>
-              </aside>
               <div class="bank-results">
                 <div id="knowledgeChips" class="knowledge-chips"></div>
                 <div id="bankResultHead" class="bank-result-head"></div>
@@ -320,6 +299,7 @@
                 <button id="printAssignmentBtn" class="ghost">导出 Word</button>
                 <button id="exportPdfBtn" class="ghost">导出 PDF</button>
               </div>
+              <div id="assignmentHistory" class="assignment-history"></div>
             </section>
 
             <section id="printArea" class="paper">
@@ -540,6 +520,7 @@
         </div>
       </div>
     </div>
+    <script src="/app-config.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>
