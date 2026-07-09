@@ -1,0 +1,289 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" fill="none">
+  <defs>
+    <style>
+      .font { font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif; }
+      .h1 { font: 800 30px "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif; fill:#141c2b; }
+      .h2 { font: 800 17px "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif; fill:#172033; }
+      .h3 { font: 800 14px "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif; fill:#172033; }
+      .body { font: 500 13px "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif; fill:#5d6a7e; }
+      .small { font: 600 11px "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif; fill:#748196; }
+      .tiny { font: 600 10px "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif; fill:#8995a8; }
+      .nav { font: 700 13px "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif; fill:#627086; }
+      .navActive { font: 800 13px "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif; fill:#0f62fe; }
+      .number { font: 800 36px "Inter", "Segoe UI", Arial, sans-serif; fill:#141c2b; }
+      .mono { font: 700 11px "JetBrains Mono", Consolas, monospace; fill:#69778b; }
+    </style>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#273247" flood-opacity=".10"/>
+    </filter>
+    <filter id="shadowSmall" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#273247" flood-opacity=".08"/>
+    </filter>
+    <linearGradient id="pageBg" x1="0" y1="0" x2="1920" y2="1080">
+      <stop stop-color="#f7f9fc"/>
+      <stop offset=".55" stop-color="#f2f6fb"/>
+      <stop offset="1" stop-color="#edf3f8"/>
+    </linearGradient>
+    <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
+      <stop stop-color="#0f62fe"/>
+      <stop offset="1" stop-color="#54b5ff"/>
+    </linearGradient>
+    <linearGradient id="aiGrad" x1="1140" y1="136" x2="1772" y2="372">
+      <stop stop-color="#101828"/>
+      <stop offset="1" stop-color="#172b43"/>
+    </linearGradient>
+    <linearGradient id="greenGrad" x1="0" y1="0" x2="270" y2="95">
+      <stop stop-color="#e8fff7"/>
+      <stop offset="1" stop-color="#f6fbff"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#pageBg)"/>
+
+  <!-- App shell -->
+  <rect x="32" y="24" width="1856" height="1032" rx="22" fill="#ffffff" filter="url(#shadowSoft)"/>
+  <rect x="32" y="24" width="236" height="1032" rx="22" fill="#fbfcfe"/>
+  <rect x="267" y="24" width="1" height="1032" fill="#e6ebf2"/>
+
+  <!-- Sidebar brand -->
+  <rect x="56" y="52" width="40" height="40" rx="11" fill="url(#logoGrad)"/>
+  <text x="69" y="79" font-family="Segoe UI, Arial" font-size="20" font-weight="800" fill="#fff">Z</text>
+  <text x="108" y="68" class="font" font-size="15" font-weight="850" fill="#111827">ZenoX</text>
+  <text x="108" y="88" class="small">智能题库 SaaS</text>
+
+  <!-- Sidebar nav -->
+  <rect x="52" y="128" width="192" height="42" rx="10" fill="#f5f7fb"/>
+  <circle cx="74" cy="149" r="5" fill="#94a3b8"/>
+  <text x="92" y="154" class="nav">今日工作台</text>
+  <rect x="52" y="182" width="192" height="42" rx="10" fill="#edf5ff"/>
+  <rect x="52" y="193" width="3" height="20" rx="2" fill="#0f62fe"/>
+  <circle cx="74" cy="203" r="5" fill="#0f62fe"/>
+  <text x="92" y="208" class="navActive">资料审核</text>
+  <rect x="52" y="236" width="192" height="42" rx="10" fill="#fff"/>
+  <circle cx="74" cy="257" r="5" fill="#94a3b8"/>
+  <text x="92" y="262" class="nav">题库搜索</text>
+  <rect x="52" y="290" width="192" height="42" rx="10" fill="#fff"/>
+  <circle cx="74" cy="311" r="5" fill="#94a3b8"/>
+  <text x="92" y="316" class="nav">智能组卷</text>
+  <rect x="52" y="344" width="192" height="42" rx="10" fill="#fff"/>
+  <circle cx="74" cy="365" r="5" fill="#94a3b8"/>
+  <text x="92" y="370" class="nav">学生画像</text>
+  <rect x="52" y="398" width="192" height="42" rx="10" fill="#fff"/>
+  <circle cx="74" cy="419" r="5" fill="#94a3b8"/>
+  <text x="92" y="424" class="nav">系统设置</text>
+
+  <text x="56" y="500" class="tiny">今日数据</text>
+  <rect x="52" y="520" width="192" height="84" rx="12" fill="#f8fbff" stroke="#e4ebf3"/>
+  <text x="72" y="548" class="small">待审核题目</text>
+  <text x="72" y="584" font-family="Inter,Segoe UI" font-size="30" font-weight="850" fill="#141c2b">38</text>
+  <text x="123" y="582" class="small">题</text>
+  <rect x="52" y="616" width="192" height="84" rx="12" fill="#f8fbff" stroke="#e4ebf3"/>
+  <text x="72" y="644" class="small">本周作业</text>
+  <text x="72" y="680" font-family="Inter,Segoe UI" font-size="30" font-weight="850" fill="#141c2b">12</text>
+  <text x="123" y="678" class="small">份</text>
+
+  <rect x="52" y="892" width="192" height="112" rx="14" fill="#111827"/>
+  <text x="72" y="923" class="small" fill="#e5edf7">云端连接正常</text>
+  <text x="72" y="946" class="tiny" fill="#9aa8ba">PostgreSQL · 8.137.183.250</text>
+  <rect x="72" y="970" width="152" height="6" rx="3" fill="#273244"/>
+  <rect x="72" y="970" width="112" height="6" rx="3" fill="#25c18a"/>
+  <text x="72" y="992" class="tiny" fill="#9aa8ba">AI 用量 68%</text>
+
+  <!-- Main header -->
+  <text x="308" y="76" class="small" fill="#0f62fe">Command Center</text>
+  <text x="308" y="112" class="h1">今天先把题库生产线跑顺</text>
+  <text x="308" y="140" class="body">上传资料、审核题目、补齐知识点、生成作业，一屏完成当天教研任务。</text>
+
+  <rect x="1136" y="60" width="496" height="48" rx="12" fill="#f8fafc" stroke="#dce4ef"/>
+  <circle cx="1162" cy="84" r="7" stroke="#7d8ba1" stroke-width="2"/>
+  <path d="M1167 89L1174 96" stroke="#7d8ba1" stroke-width="2" stroke-linecap="round"/>
+  <text x="1192" y="89" class="body">搜索题目、学生、作业或上传资料</text>
+  <rect x="1648" y="60" width="104" height="48" rx="12" fill="#111827"/>
+  <text x="1676" y="89" class="small" fill="#fff">上传资料</text>
+  <rect x="1764" y="60" width="72" height="48" rx="12" fill="#f8fafc" stroke="#dce4ef"/>
+  <text x="1789" y="89" class="small">设置</text>
+
+  <!-- Hero cards row -->
+  <g transform="translate(308 184)">
+    <rect width="250" height="134" rx="16" fill="#fff" stroke="#e0e7f0" filter="url(#shadowSmall)"/>
+    <text x="22" y="34" class="small">待审核题目</text>
+    <text x="22" y="82" class="number">38</text>
+    <rect x="152" y="52" width="70" height="24" rx="12" fill="#fff7e7"/>
+    <text x="169" y="68" class="tiny" fill="#b86400">需核对</text>
+    <text x="22" y="112" class="tiny">5 份资料 · 12 题缺解析</text>
+  </g>
+  <g transform="translate(580 184)">
+    <rect width="250" height="134" rx="16" fill="#fff" stroke="#e0e7f0" filter="url(#shadowSmall)"/>
+    <text x="22" y="34" class="small">题库总量</text>
+    <text x="22" y="82" class="number">3,420</text>
+    <rect x="146" y="52" width="76" height="24" rx="12" fill="#eaf7ff"/>
+    <text x="160" y="68" class="tiny" fill="#0f62fe">同步中</text>
+    <text x="22" y="112" class="tiny">本月新增 286 题</text>
+  </g>
+  <g transform="translate(852 184)">
+    <rect width="250" height="134" rx="16" fill="#fff" stroke="#e0e7f0" filter="url(#shadowSmall)"/>
+    <text x="22" y="34" class="small">本周作业</text>
+    <text x="22" y="82" class="number">12</text>
+    <rect x="147" y="52" width="75" height="24" rx="12" fill="#eefbf5"/>
+    <text x="163" y="68" class="tiny" fill="#087e54">可导出</text>
+    <text x="22" y="112" class="tiny">3 份待打印 · 2 份需补题</text>
+  </g>
+  <g transform="translate(1124 184)">
+    <rect width="250" height="134" rx="16" fill="#fff" stroke="#e0e7f0" filter="url(#shadowSmall)"/>
+    <text x="22" y="34" class="small">学生薄弱点</text>
+    <text x="22" y="82" class="number">7</text>
+    <rect x="147" y="52" width="75" height="24" rx="12" fill="#f0f4ff"/>
+    <text x="163" y="68" class="tiny" fill="#3346a3">建议练</text>
+    <text x="22" y="112" class="tiny">一次函数、几何证明</text>
+  </g>
+
+  <!-- AI panel -->
+  <rect x="1410" y="184" width="426" height="282" rx="18" fill="url(#aiGrad)" filter="url(#shadowSmall)"/>
+  <text x="1438" y="222" class="small" fill="#90cdf4">ZenoX AI</text>
+  <text x="1438" y="258" font-family="Microsoft YaHei,Segoe UI" font-size="24" font-weight="850" fill="#fff">今天建议先处理 3 件事</text>
+  <rect x="1438" y="286" width="348" height="1" fill="#314057"/>
+  <g transform="translate(1438 312)">
+    <rect width="348" height="42" rx="10" fill="#1b2a40"/>
+    <circle cx="22" cy="21" r="8" fill="#25c18a"/>
+    <text x="44" y="26" class="small" fill="#e8eef7">审核 12 道缺解析题，避免污染题库</text>
+  </g>
+  <g transform="translate(1438 366)">
+    <rect width="348" height="42" rx="10" fill="#1b2a40"/>
+    <circle cx="22" cy="21" r="8" fill="#67a8ff"/>
+    <text x="44" y="26" class="small" fill="#e8eef7">给初二学生生成一次函数专项练习</text>
+  </g>
+  <g transform="translate(1438 420)">
+    <rect width="160" height="32" rx="9" fill="#fff"/>
+    <text x="42" y="21" class="small" fill="#111827">一键处理</text>
+    <rect x="176" width="160" height="32" rx="9" fill="#26364d"/>
+    <text x="214" y="21" class="small" fill="#d7e1ee">查看详情</text>
+  </g>
+
+  <!-- Main work grid -->
+  <rect x="308" y="354" width="512" height="318" rx="18" fill="#fff" stroke="#e0e7f0" filter="url(#shadowSmall)"/>
+  <text x="336" y="394" class="h2">待审核资料</text>
+  <text x="336" y="420" class="body">按资料组织待审核题，先处理质量风险最高的内容。</text>
+  <g transform="translate(336 450)">
+    <rect width="456" height="58" rx="12" fill="#f8fafc" stroke="#e5ebf3"/>
+    <rect x="16" y="16" width="32" height="32" rx="8" fill="#edf5ff"/>
+    <text x="28" y="38" class="tiny" fill="#0f62fe">PDF</text>
+    <text x="62" y="25" class="h3">初二一次函数周练.pdf</text>
+    <text x="62" y="46" class="tiny">18 题 · 6 题需核对配图 · 刚刚上传</text>
+    <rect x="366" y="17" width="66" height="24" rx="12" fill="#fff7e7"/>
+    <text x="382" y="33" class="tiny" fill="#b86400">优先</text>
+  </g>
+  <g transform="translate(336 520)">
+    <rect width="456" height="58" rx="12" fill="#fff" stroke="#e5ebf3"/>
+    <rect x="16" y="16" width="32" height="32" rx="8" fill="#eefbf5"/>
+    <text x="28" y="38" class="tiny" fill="#087e54">IMG</text>
+    <text x="62" y="25" class="h3">几何证明错题截图</text>
+    <text x="62" y="46" class="tiny">9 题 · 自动截图置信度 84%</text>
+    <rect x="366" y="17" width="66" height="24" rx="12" fill="#eefbf5"/>
+    <text x="383" y="33" class="tiny" fill="#087e54">稳定</text>
+  </g>
+  <g transform="translate(336 590)">
+    <rect width="456" height="58" rx="12" fill="#fff" stroke="#e5ebf3"/>
+    <rect x="16" y="16" width="32" height="32" rx="8" fill="#f0f4ff"/>
+    <text x="27" y="38" class="tiny" fill="#3346a3">TXT</text>
+    <text x="62" y="25" class="h3">英语阅读理解摘录</text>
+    <text x="62" y="46" class="tiny">11 题 · 等待补充答案</text>
+    <rect x="366" y="17" width="66" height="24" rx="12" fill="#f0f4ff"/>
+    <text x="383" y="33" class="tiny" fill="#3346a3">待补</text>
+  </g>
+
+  <rect x="844" y="354" width="532" height="318" rx="18" fill="#fff" stroke="#e0e7f0" filter="url(#shadowSmall)"/>
+  <text x="872" y="394" class="h2">当前题目审核</text>
+  <text x="872" y="420" class="body">左边看题目来源，右边直接修题干、配图、答案和知识点。</text>
+  <rect x="872" y="450" width="184" height="146" rx="13" fill="#f5f7fb" stroke="#dce4ef"/>
+  <rect x="895" y="474" width="138" height="92" rx="9" fill="#fff" stroke="#dce4ef"/>
+  <path d="M917 535L946 502L973 528L991 512L1020 552" stroke="#96a4b8" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="990" cy="496" r="9" fill="#c7d2e0"/>
+  <text x="912" y="581" class="tiny">原页截图 · 自动框选</text>
+  <text x="1080" y="466" class="h3">如图，在平面直角坐标系中，直线 l 与一次函数...</text>
+  <text x="1080" y="494" class="body">知识点：一次函数图像、交点坐标、面积计算</text>
+  <rect x="1080" y="520" width="88" height="26" rx="13" fill="#edf5ff"/>
+  <text x="1101" y="537" class="tiny" fill="#0f62fe">AI 查题 4</text>
+  <rect x="1178" y="520" width="98" height="26" rx="13" fill="#eefbf5"/>
+  <text x="1194" y="537" class="tiny" fill="#087e54">题库相似 6</text>
+  <rect x="1286" y="520" width="62" height="26" rx="13" fill="#fff7e7"/>
+  <text x="1303" y="537" class="tiny" fill="#b86400">需核对</text>
+  <rect x="1080" y="570" width="126" height="34" rx="10" fill="#0f62fe"/>
+  <text x="1116" y="592" class="small" fill="#fff">入库本题</text>
+  <rect x="1218" y="570" width="126" height="34" rx="10" fill="#f8fafc" stroke="#dce4ef"/>
+  <text x="1249" y="592" class="small">加入组卷</text>
+  <rect x="1080" y="616" width="268" height="34" rx="10" fill="#111827"/>
+  <text x="1162" y="638" class="small" fill="#fff">生成同类题</text>
+
+  <rect x="1410" y="500" width="426" height="172" rx="18" fill="#fff" stroke="#e0e7f0" filter="url(#shadowSmall)"/>
+  <text x="1438" y="540" class="h2">作业篮</text>
+  <text x="1438" y="566" class="body">题库题、待审核题和 AI 生成题可以混合组卷。</text>
+  <g transform="translate(1438 594)">
+    <rect width="104" height="48" rx="12" fill="#f8fafc" stroke="#e5ebf3"/>
+    <text x="18" y="22" font-family="Inter,Segoe UI" font-size="20" font-weight="850" fill="#141c2b">26</text>
+    <text x="18" y="38" class="tiny">题库题</text>
+    <rect x="122" width="104" height="48" rx="12" fill="#f8fafc" stroke="#e5ebf3"/>
+    <text x="140" y="22" font-family="Inter,Segoe UI" font-size="20" font-weight="850" fill="#141c2b">8</text>
+    <text x="140" y="38" class="tiny">待审核</text>
+    <rect x="244" width="104" height="48" rx="12" fill="#f8fafc" stroke="#e5ebf3"/>
+    <text x="262" y="22" font-family="Inter,Segoe UI" font-size="20" font-weight="850" fill="#141c2b">8</text>
+    <text x="262" y="38" class="tiny">AI 生成</text>
+  </g>
+
+  <!-- Bottom panels -->
+  <rect x="308" y="704" width="702" height="284" rx="18" fill="#fff" stroke="#e0e7f0" filter="url(#shadowSmall)"/>
+  <text x="336" y="744" class="h2">题库搜索</text>
+  <text x="336" y="770" class="body">宽屏下不再固定窄宽，筛选、列表、详情可以并排工作。</text>
+  <rect x="336" y="800" width="414" height="42" rx="11" fill="#f8fafc" stroke="#dce4ef"/>
+  <text x="360" y="826" class="body">搜索：一次函数 图像 面积</text>
+  <rect x="764" y="800" width="96" height="42" rx="11" fill="#edf5ff"/>
+  <text x="786" y="826" class="small" fill="#0f62fe">筛选</text>
+  <rect x="872" y="800" width="110" height="42" rx="11" fill="#111827"/>
+  <text x="902" y="826" class="small" fill="#fff">组卷</text>
+  <g transform="translate(336 862)">
+    <rect width="646" height="44" rx="11" fill="#fff" stroke="#e5ebf3"/>
+    <text x="18" y="26" class="body" fill="#172033">一次函数图像经过点 A(2,3)，求解析式...</text>
+    <rect x="514" y="10" width="48" height="24" rx="12" fill="#edf5ff"/>
+    <text x="527" y="26" class="tiny" fill="#0f62fe">提高</text>
+    <rect x="574" y="10" width="48" height="24" rx="12" fill="#eefbf5"/>
+    <text x="587" y="26" class="tiny" fill="#087e54">入选</text>
+  </g>
+  <g transform="translate(336 918)">
+    <rect width="646" height="44" rx="11" fill="#f8fafc" stroke="#e5ebf3"/>
+    <text x="18" y="26" class="body" fill="#172033">直线与坐标轴围成三角形面积问题...</text>
+    <rect x="514" y="10" width="48" height="24" rx="12" fill="#f0f4ff"/>
+    <text x="527" y="26" class="tiny" fill="#3346a3">基础</text>
+    <rect x="574" y="10" width="48" height="24" rx="12" fill="#fff"/>
+    <text x="588" y="26" class="tiny">加入</text>
+  </g>
+
+  <rect x="1034" y="704" width="386" height="284" rx="18" fill="#fff" stroke="#e0e7f0" filter="url(#shadowSmall)"/>
+  <text x="1062" y="744" class="h2">学生画像</text>
+  <text x="1062" y="770" class="body">错题自动回流后，组卷建议会更准确。</text>
+  <rect x="1062" y="806" width="330" height="42" rx="12" fill="#f8fafc" stroke="#e5ebf3"/>
+  <text x="1084" y="832" class="body" fill="#172033">林同学 · 一次函数 · 连错 4 次</text>
+  <rect x="1062" y="862" width="330" height="42" rx="12" fill="#fff" stroke="#e5ebf3"/>
+  <text x="1084" y="888" class="body" fill="#172033">陈同学 · 几何证明 · 缺步骤</text>
+  <rect x="1062" y="918" width="154" height="38" rx="11" fill="#0f62fe"/>
+  <text x="1096" y="942" class="small" fill="#fff">生成专项练习</text>
+  <rect x="1232" y="918" width="160" height="38" rx="11" fill="#f8fafc" stroke="#dce4ef"/>
+  <text x="1273" y="942" class="small">查看报告</text>
+
+  <rect x="1444" y="704" width="392" height="284" rx="18" fill="#fff" stroke="#e0e7f0" filter="url(#shadowSmall)"/>
+  <text x="1472" y="744" class="h2">系统状态</text>
+  <text x="1472" y="770" class="body">上线后给机构管理员看的可靠性信息。</text>
+  <g transform="translate(1472 806)">
+    <circle cx="8" cy="8" r="5" fill="#25c18a"/>
+    <text x="28" y="13" class="body" fill="#172033">PostgreSQL 存储正常</text>
+    <text x="28" y="36" class="tiny">业务数据和上传文件均在云端</text>
+  </g>
+  <g transform="translate(1472 866)">
+    <circle cx="8" cy="8" r="5" fill="#25c18a"/>
+    <text x="28" y="13" class="body" fill="#172033">AI 任务队列正常</text>
+    <text x="28" y="36" class="tiny">当前无失败任务</text>
+  </g>
+  <g transform="translate(1472 926)">
+    <circle cx="8" cy="8" r="5" fill="#ffb020"/>
+    <text x="28" y="13" class="body" fill="#172033">本月 AI 用量 68%</text>
+    <text x="28" y="36" class="tiny">接近 80% 时提醒续费或升级</text>
+  </g>
+</svg>

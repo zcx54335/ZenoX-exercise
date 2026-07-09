@@ -2,10 +2,11 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 let confirmResolve = null;
 let approveResolve = null;
+let selectProxyUid = 0;
 
 const state = {
   db: { organizations: [], users: [], questions: [], pendingQuestions: [], students: [], assignments: [], mistakes: [], uploads: [], jobs: [], aiUsage: [], auditLogs: [], activity: [] },
-  view: "import",
+  view: "dashboard",
   selected: new Set(),
   selectedPending: new Set(),
   splitDrafts: [],
@@ -33,7 +34,8 @@ const state = {
     startY: 0,
     rect: null,
     dragging: false
-  }
+  },
+  openSelectId: ""
 };
 
 const pendingActionTokens = new Map();
@@ -53,12 +55,21 @@ const levels = window.ZENOX_CONFIG?.levels || ["基础", "提高", "压轴"];
 const types = window.ZENOX_CONFIG?.questionTypes || ["选择题", "填空题", "解答题", "判断题", "完形填空", "阅读理解", "作文", "实验题", "计算题", "未分类"];
 
 const titles = {
+  dashboard: ["Command Center", "今日工作台"],
   import: ["资料入库", "资料解析"],
   bankSearch: ["题库管理", "题库搜索"],
   bankUpload: ["题库管理", "上传题库"],
   assignments: ["作业导出", "智能组卷"],
   students: ["学生跟踪", "学生画像"],
   settings: ["云端部署", "系统设置"]
+};
+
+const filterSelectLabels = {
+  filterSubject: "科目",
+  filterStage: "学段",
+  filterLevel: "难度",
+  filterType: "题型",
+  filterKnowledge: "知识点"
 };
 
 function escapeHtml(value = "") {
@@ -335,7 +346,10 @@ function renderAll() {
   renderAssignmentHistory();
   renderPaper();
   renderSettings();
-  requestAnimationFrame(() => autoFitTextareas(document));
+  requestAnimationFrame(() => {
+    autoFitTextareas(document);
+    syncFilterSelects();
+  });
 }
 
 function optionTags(values, selected = "") {
@@ -486,7 +500,7 @@ function collapseFeatureGuides() {
 }
 
 function renderChrome() {
-  if (!titles[state.view]) state.view = "import";
+  if (!titles[state.view]) state.view = "dashboard";
   const [eyebrow, title] = titles[state.view];
   $("#viewEyebrow").textContent = eyebrow;
   $("#viewTitle").textContent = title;
@@ -509,28 +523,162 @@ function renderChrome() {
       <strong>${escapeHtml(subscriptionLabel(org.subscriptionStatus || usage.subscriptionStatus))}</strong>
     `;
   }
+  syncFilterSelects($(".view.active") || document);
 }
 
 function renderDashboard() {
+  const pending = state.db.pendingQuestions || [];
+  const questions = state.db.questions || [];
+  const assignments = state.db.assignments || [];
+  const students = state.db.students || [];
+  const mistakes = state.db.mistakes || [];
+  const uploads = state.db.uploads || [];
+  const metricPending = $("#metricPending");
   const metricQuestions = $("#metricQuestions");
-  const metricStudents = $("#metricStudents");
   const metricAssignments = $("#metricAssignments");
   const metricMistakes = $("#metricMistakes");
-  const activityList = $("#activityList");
-  if (!metricQuestions || !metricStudents || !metricAssignments || !metricMistakes || !activityList) return;
-  metricQuestions.textContent = state.db.questions.length;
-  metricStudents.textContent = state.db.students.length;
-  metricAssignments.textContent = state.db.assignments.length;
-  metricMistakes.textContent = state.db.mistakes.length;
-  activityList.innerHTML = state.db.activity.length
-    ? state.db.activity.map((item) => `
-      <div class="activity-item">
-        <strong>${escapeHtml(item.action)}</strong>
-        <p class="muted">${escapeHtml(item.detail || "")}</p>
-        <span class="tag">${formatDateTime(item.createdAt)}</span>
+  if (!metricPending || !metricQuestions || !metricAssignments || !metricMistakes) return;
+
+  metricPending.textContent = numberText(pending.length);
+  metricQuestions.textContent = numberText(questions.length);
+  metricAssignments.textContent = numberText(assignments.length);
+  metricMistakes.textContent = numberText(new Set(mistakes.map((item) => item.studentId)).size || mistakes.length);
+  $("#metricPendingNote").textContent = pending.length ? `${pending.filter((q) => q.qualityErrors?.length || q.qualityWarnings?.length).length} 题需要优先核对` : "上传资料后会进入待审核";
+  $("#metricQuestionNote").textContent = questions.length ? `已沉淀 ${numberText(questions.length)} 道正式题` : "审核通过后自动入库";
+  $("#metricAssignmentNote").textContent = assignments.length ? `最近保存 ${numberText(Math.min(assignments.length, 12))} 份` : "组卷后可保存和导出";
+  $("#metricMistakeNote").textContent = mistakes.length ? `${numberText(mistakes.filter((item) => !item.resolved).length)} 条未解决错题` : "记录错题后形成画像";
+
+  const uploadList = $("#dashboardUploadList");
+  if (uploadList) {
+    const grouped = uploads.slice(0, 4);
+    uploadList.innerHTML = grouped.length
+      ? grouped.map((upload) => {
+          const count = pending.filter((q) => q.sourceUploadId === upload.id).length;
+          const risky = pending.filter((q) => q.sourceUploadId === upload.id && (q.qualityErrors?.length || q.qualityWarnings?.length)).length;
+          const type = String(upload.filename || "").split(".").pop()?.slice(0, 3).toUpperCase() || "DOC";
+          return `
+            <article class="command-row" data-view="import">
+              <span class="file-chip">${escapeHtml(type)}</span>
+              <div>
+                <strong>${escapeHtml(upload.filename || "未命名资料")}</strong>
+                <p>${numberText(count)} 题待审核${risky ? ` · ${numberText(risky)} 题需核对` : ""}</p>
+              </div>
+              <em>${escapeHtml(upload.analysisStatus || "ready")}</em>
+            </article>
+          `;
+        }).join("")
+      : `<div class="command-empty">还没有上传资料，先放一份 PDF、图片或 Word 进来。</div>`;
+  }
+
+  const reviewFocus = $("#dashboardReviewFocus");
+  if (reviewFocus) {
+    const current = pending.find((q) => q.qualityErrors?.length || q.qualityWarnings?.length) || pending[0];
+    reviewFocus.innerHTML = current
+      ? `
+        <div class="focus-shot">
+          ${current.questionImage ? `<img src="${escapeHtml(current.questionImage)}" alt="本题截图" />` : `<span>原页截图</span>`}
+        </div>
+        <div class="focus-copy">
+          <strong>${escapeHtml((current.stem || "待审核题目").slice(0, 82))}${(current.stem || "").length > 82 ? "..." : ""}</strong>
+          <p>${escapeHtml((current.knowledge || []).join("，") || current.type || "待补知识点")}</p>
+          <div class="tag-row">
+            <span class="tag">AI 查题 ${(current.webVariants || []).length}</span>
+            <span class="tag">题库相似 ${(current.bankVariants || []).length}</span>
+            <span class="tag ${current.qualityErrors?.length ? "quality-error-tag" : current.qualityWarnings?.length ? "quality-warning-tag" : "quality-ok-tag"}">${current.qualityErrors?.length ? "质检未过" : current.qualityWarnings?.length ? "需核对" : "可入库"}</span>
+          </div>
+          <div class="row-actions">
+            <button class="primary" type="button" data-view="import">入库处理</button>
+            <button class="ghost" type="button" data-view="assignments">加入组卷</button>
+          </div>
+        </div>
+      `
+      : `<div class="command-empty">待审核队列为空。上传资料后，这里会显示当前最需要处理的题。</div>`;
+  }
+
+  const aiList = $("#dashboardAiList");
+  if (aiList) {
+    const riskCount = pending.filter((q) => q.qualityErrors?.length || q.qualityWarnings?.length).length;
+    const openMistakes = mistakes.filter((item) => !item.resolved).length;
+    const suggestions = [
+      riskCount ? `先审核 ${numberText(riskCount)} 道需核对题，避免错题污染题库` : "当前待审核质量稳定，可以继续上传新资料",
+      openMistakes ? `根据 ${numberText(openMistakes)} 条未解决错题生成专项练习` : "记录学生错题后，系统会推荐专项练习",
+      questions.length >= 20 ? "题库样本已足够，可以使用自动组卷" : "先沉淀 20 道以上样例题，自动组卷会更准"
+    ];
+    aiList.innerHTML = suggestions.map((text, index) => `
+      <div class="ai-suggestion">
+        <span>${index + 1}</span>
+        <strong>${escapeHtml(text)}</strong>
       </div>
-    `).join("")
-    : `<p class="muted">还没有动态。先上传一份资料开始。</p>`;
+    `).join("");
+  }
+
+  const questionList = $("#dashboardQuestionList");
+  if (questionList) {
+    questionList.innerHTML = questions.length
+      ? questions.slice(0, 3).map((q) => `
+        <article class="command-row" data-view="bankSearch">
+          <span class="file-chip soft">${escapeHtml(q.level || "题")}</span>
+          <div>
+            <strong>${escapeHtml((q.stem || "未命名题目").slice(0, 54))}${(q.stem || "").length > 54 ? "..." : ""}</strong>
+            <p>${escapeHtml([q.subject, q.grade, q.type].filter(Boolean).join(" · ") || "未分类")}</p>
+          </div>
+          <em>加入</em>
+        </article>
+      `).join("")
+      : `<div class="command-empty">题库还是空的。审核入库后，这里会显示最近题目。</div>`;
+  }
+
+  const studentList = $("#dashboardStudentList");
+  if (studentList) {
+    studentList.innerHTML = students.length
+      ? students.slice(0, 3).map((student) => {
+          const count = mistakes.filter((m) => m.studentId === student.id && !m.resolved).length;
+          return `
+            <article class="command-row" data-view="students">
+              <span class="file-chip soft">${escapeHtml((student.name || "?").slice(0, 1))}</span>
+              <div>
+                <strong>${escapeHtml(student.name || "未命名学生")}</strong>
+                <p>${escapeHtml([student.stage, student.grade, student.level].filter(Boolean).join(" · ") || "未填写信息")}</p>
+              </div>
+              <em>${numberText(count)} 错题</em>
+            </article>
+          `;
+        }).join("")
+      : `<div class="command-empty">还没有学生档案。添加学生后可以沉淀薄弱点。</div>`;
+  }
+
+  const statusList = $("#dashboardStatusList");
+  if (statusList) {
+    const usage = state.db.usage || {};
+    const org = state.db.organizations?.[0] || {};
+    const aiUsed = state.db.aiUsage?.reduce((sum, item) => sum + Number(item.totalTokens || 0), 0) || 0;
+    statusList.innerHTML = [
+      ["ok", "PostgreSQL 存储正常", "业务数据和上传文件均在云端"],
+      ["ok", "AI 任务队列正常", `${numberText(state.db.jobs?.filter((job) => job.status === "processing").length || 0)} 个任务处理中`],
+      [aiUsed ? "warn" : "muted", `本月 AI 用量 ${numberText(aiUsed)}`, escapeHtml(subscriptionLabel(org.subscriptionStatus || usage.subscriptionStatus))]
+    ].map(([status, title, note]) => `
+      <div class="status-row ${status}">
+        <span></span>
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <p>${escapeHtml(note)}</p>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  const activityList = $("#activityList");
+  if (activityList) {
+    activityList.innerHTML = state.db.activity.length
+      ? state.db.activity.slice(0, 6).map((item) => `
+        <div class="activity-item">
+          <strong>${escapeHtml(item.action)}</strong>
+          <p class="muted">${escapeHtml(item.detail || "")}</p>
+          <span class="tag">${formatDateTime(item.createdAt)}</span>
+        </div>
+      `).join("")
+      : `<p class="muted">还没有动态。先上传一份资料开始。</p>`;
+  }
 }
 
 function renderSettings() {
@@ -693,7 +841,10 @@ function renderReviewList() {
       state.reviewIndexScrollTop = nextIndex.scrollTop;
     }, { passive: true });
   }
-  requestAnimationFrame(() => autoFitTextareas(box));
+  requestAnimationFrame(() => {
+    autoFitTextareas(box);
+    syncFilterSelects();
+  });
 }
 
 function pendingReviewGroups() {
@@ -1160,13 +1311,17 @@ function unique(values) {
 
 function renderFilters() {
   fillSelect($("#filterSubject"), ["全部科目", ...unique(state.db.questions.map((q) => q.subject))], true);
+  syncFilterSelect($("#filterStage"));
+  syncFilterSelect($("#filterLevel"));
   fillSelect($("#filterType"), ["全部题型", ...unique(state.db.questions.map((q) => q.type))], true);
   fillSelect($("#filterKnowledge"), ["全部知识点", ...unique(state.db.questions.flatMap((q) => q.knowledge || []))], true);
+  syncFilterSelects();
 }
 
 function renderBankSummary() {
   const all = state.db.questions || [];
   const filtered = all.filter(questionMatches);
+  const selected = selectedQuestions().length;
   const knowledgeCounts = new Map();
   for (const question of all) {
     for (const tag of question.knowledge || []) {
@@ -1177,10 +1332,21 @@ function renderBankSummary() {
   const summary = $("#bankSummary");
   if (summary) {
     summary.innerHTML = `
-      <article><strong>${numberText(filtered.length)}</strong><span>当前结果</span></article>
-      <article><strong>${numberText(all.length)}</strong><span>题库总量</span></article>
-      <article><strong>${numberText(selectedQuestions().length)}</strong><span>组卷题篮</span></article>
-      <article><strong>${numberText(knowledgeCounts.size)}</strong><span>知识点</span></article>
+      <article class="bank-focus-card">
+        <span>当前结果</span>
+        <strong>${numberText(filtered.length)}</strong>
+        <p>从 ${numberText(all.length)} 道正式题中筛选</p>
+      </article>
+      <article>
+        <span>组卷题篮</span>
+        <strong>${numberText(selected)}</strong>
+        <p>${selected ? "可直接生成作业" : "勾选题目后组卷"}</p>
+      </article>
+      <article>
+        <span>知识点</span>
+        <strong>${numberText(knowledgeCounts.size)}</strong>
+        <p>${topTags[0] ? `最高频：${topTags[0][0]}` : "入库后自动统计"}</p>
+      </article>
     `;
   }
   const chips = $("#knowledgeChips");
@@ -1201,6 +1367,102 @@ function fillSelect(select, values, firstIsEmpty = false) {
     return `<option value="${escapeHtml(actual)}">${escapeHtml(value)}</option>`;
   }).join("");
   select.value = [...select.options].some((option) => option.value === oldValue) ? oldValue : "";
+  syncFilterSelect(select);
+}
+
+function selectProxyLabel(select) {
+  if (filterSelectLabels[select.id]) return filterSelectLabels[select.id];
+  if (select.getAttribute("aria-label")) return select.getAttribute("aria-label");
+  const label = select.closest("label");
+  if (label) {
+    const text = Array.from(label.childNodes)
+      .filter((node) => node.nodeType === 3)
+      .map((node) => node.textContent.trim())
+      .join("")
+      .trim();
+    if (text) return text;
+  }
+  return "选择";
+}
+
+function shouldProxySelect(select) {
+  if (!select || select.multiple) return false;
+  if (select.closest(".page-range-selects")) return false;
+  if (select.closest(".hidden")) return false;
+  if (select.parentElement?.closest("[aria-hidden='true']")) return false;
+  return Boolean(select.closest("#app") || select.closest("#approveModal"));
+}
+
+function selectProxyKey(select) {
+  if (!select.dataset.proxyId) select.dataset.proxyId = select.id || `select-proxy-${++selectProxyUid}`;
+  return select.dataset.proxyId;
+}
+
+function syncFilterSelect(select) {
+  let shell = select.closest(".select-proxy-shell");
+  if (!shouldProxySelect(select)) {
+    if (shell) {
+      shell.parentNode.insertBefore(select, shell);
+      shell.remove();
+      select.removeAttribute("tabindex");
+      select.removeAttribute("aria-hidden");
+    }
+    return;
+  }
+  if (!shell) {
+    shell = document.createElement("div");
+    shell.className = "select-proxy-shell";
+    select.parentNode.insertBefore(shell, select);
+    shell.appendChild(select);
+    shell.insertAdjacentHTML("beforeend", `
+      <button class="select-proxy-button" type="button" data-select-proxy>
+        <span></span>
+        <strong></strong>
+        <i aria-hidden="true"></i>
+      </button>
+      <div class="select-proxy-menu" role="listbox"></div>
+    `);
+  }
+
+  const key = selectProxyKey(select);
+  const label = selectProxyLabel(select);
+  const selectedOption = select.selectedOptions?.[0] || select.options?.[0];
+  const selectedText = selectedOption?.textContent || label;
+  const button = shell.querySelector(".select-proxy-button");
+  const menu = shell.querySelector(".select-proxy-menu");
+  const isOpen = state.openSelectId === key;
+  const menuId = `${key}-menu`;
+  const isFilter = Boolean(select.closest(".filters"));
+
+  shell.classList.toggle("filter-proxy", isFilter);
+  select.tabIndex = -1;
+  select.setAttribute("aria-hidden", "true");
+  menu.id = menuId;
+  shell.classList.toggle("open", isOpen);
+  shell.dataset.value = select.value || "";
+  button.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  button.setAttribute("aria-haspopup", "listbox");
+  button.setAttribute("aria-controls", menuId);
+  button.setAttribute("aria-label", `${label}: ${selectedText}`);
+  button.querySelector("span").textContent = label;
+  button.querySelector("strong").textContent = selectedText;
+  menu.innerHTML = [...select.options].map((option) => {
+    const selected = option.value === select.value;
+    return `
+      <button class="${selected ? "selected" : ""}" type="button" role="option" aria-selected="${selected ? "true" : "false"}" data-select-proxy-option="${escapeHtml(option.value)}">
+        <span>${escapeHtml(option.textContent || "")}</span>
+      </button>
+    `;
+  }).join("");
+}
+
+function syncFilterSelects(root = document) {
+  $$("select", root).forEach(syncFilterSelect);
+  if (root !== document) $$("#approveModal select").forEach(syncFilterSelect);
+}
+
+function syncAssignmentSelects() {
+  ["#assignmentStudent", "#assignmentExportMode", "#autoPickAvoidUsed"].forEach((selector) => syncFilterSelect($(selector)));
 }
 
 function questionMatches(q) {
@@ -1248,6 +1510,7 @@ function renderQuestionList() {
       ? `<div class="bank-empty-state"><strong>没有匹配题目</strong><span>可以清空筛选，或换一个知识点、题型、难度再试。</span><button class="ghost compact" type="button" data-clear-bank-filters>清空筛选</button></div>`
       : `<div class="bank-empty-state"><strong>题库还是空的</strong><span>先去上传题库，审核入库后这里才能搜索和组卷。</span><button class="primary compact" type="button" data-view="bankUpload">上传题库</button></div>`;
   $("#selectedCount").textContent = `已选 ${selectedQuestions().length} 题`;
+  syncFilterSelects();
 }
 
 function bankPagination(total, totalPages) {
@@ -1272,7 +1535,9 @@ function clearBankFilters() {
     input.value = "";
   });
   state.bankIssueFilter = "";
+  state.openSelectId = "";
   state.bankPage = 1;
+  syncFilterSelects();
   renderBankSummary();
   renderQuestionList();
 }
@@ -1375,6 +1640,7 @@ function renderStudents() {
   $("#assignmentStudent").innerHTML = studentOptions;
   $("#mistakeStudent").innerHTML = studentOptions;
   renderStudentWeakSummary();
+  syncFilterSelects();
 }
 
 function renderStudentWeakSummary() {
@@ -1433,6 +1699,7 @@ function renderMistakes() {
       `;
     }).join("")
     : `<p class="muted">记录错题后会在这里形成学生薄弱点。</p>`;
+  syncFilterSelects();
 }
 
 function renderAssignmentControls() {
@@ -1454,6 +1721,7 @@ function renderAssignmentControls() {
       : `<p class="muted">可以从“资料解析”的待审核题直接加入，也可以从题库勾选题目混合组卷。</p>`;
   }
   if (!$("#assignmentTitle").value) $("#assignmentTitle").value = `课后练习 ${new Date().toLocaleDateString("zh-CN")}`;
+  syncAssignmentSelects();
 }
 
 function renderAssignmentHistory() {
@@ -1642,6 +1910,7 @@ function loadAssignment(assignment = {}) {
   renderQuestionList();
   renderAssignmentControls();
   renderPaper();
+  syncFilterSelects();
 }
 
 function formObject(form) {
@@ -1684,6 +1953,7 @@ function renderBankWorkspace() {
   renderBankKnowledgeOptions();
   renderBankPagePicker();
   renderBankAnswerPanels();
+  syncFilterSelects();
 }
 
 function renderBankUploadSteps() {
@@ -1737,6 +2007,7 @@ function renderBankPagePicker() {
     <p class="muted">选择要分析的页数</p>
     ${pageRangeControls(upload)}
   `;
+  syncFilterSelects();
 }
 
 function formatDateTime(value) {
@@ -2355,6 +2626,35 @@ async function exportAssignmentWord() {
 }
 
 document.addEventListener("click", async (event) => {
+  const proxyOption = event.target.closest("[data-select-proxy-option]");
+  if (proxyOption) {
+    event.preventDefault();
+    const shell = proxyOption.closest(".select-proxy-shell");
+    const select = shell?.querySelector("select");
+    if (!select) return;
+    select.value = proxyOption.dataset.selectProxyOption || "";
+    state.openSelectId = "";
+    syncFilterSelect(select);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    return;
+  }
+
+  const proxyButton = event.target.closest("[data-select-proxy]");
+  if (proxyButton) {
+    event.preventDefault();
+    const select = proxyButton.closest(".select-proxy-shell")?.querySelector("select");
+    if (!select) return;
+    const key = selectProxyKey(select);
+    state.openSelectId = state.openSelectId === key ? "" : key;
+    syncFilterSelects();
+    return;
+  }
+
+  if (state.openSelectId && !event.target.closest(".select-proxy-shell")) {
+    state.openSelectId = "";
+    syncFilterSelects();
+  }
+
   const imageLink = event.target.closest("[data-image-viewer]");
   if (imageLink) {
     event.preventDefault();
@@ -2374,6 +2674,13 @@ document.addEventListener("click", async (event) => {
     state.view = nav.dataset.view;
     if (["bankSearch", "bankUpload"].includes(state.view)) state.bankNavOpen = true;
     renderChrome();
+    if (state.view === "bankSearch") {
+      renderFilters();
+      renderBankSummary();
+      renderQuestionList();
+    }
+    if (state.view === "bankUpload") renderBankWorkspace();
+    if (state.view === "assignments") syncAssignmentSelects();
     renderPaper();
     return;
   }
@@ -2579,6 +2886,8 @@ document.addEventListener("click", async (event) => {
   if (knowledgeChip) {
     event.preventDefault();
     $("#filterKnowledge").value = knowledgeChip.dataset.knowledgeChip || "";
+    state.openSelectId = "";
+    syncFilterSelects();
     state.view = "bankSearch";
     renderChrome();
     renderBankSummary();
@@ -2936,6 +3245,10 @@ $("#approveForm").addEventListener("submit", (event) => {
   closeApproveModal(formObject(event.currentTarget));
 });
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && state.openSelectId) {
+    state.openSelectId = "";
+    syncFilterSelects();
+  }
   if (event.key === "Escape" && !$("#confirmModal").classList.contains("hidden")) closeConfirmModal(false);
   if (event.key === "Escape" && !$("#approveModal").classList.contains("hidden")) closeApproveModal(false);
   if (event.key === "Escape" && !$("#imageViewerModal").classList.contains("hidden")) closeImageViewer();
@@ -2960,6 +3273,7 @@ document.addEventListener("change", (event) => {
   }
   if (event.target.closest(".filters") || event.target.id === "searchInput") {
     state.bankPage = 1;
+    syncFilterSelects();
     renderBankSummary();
     renderQuestionList();
   }
@@ -3025,6 +3339,7 @@ document.addEventListener("drop", (event) => {
 document.addEventListener("input", (event) => {
   if (event.target.closest(".filters") || event.target.id === "searchInput") {
     state.bankPage = 1;
+    syncFilterSelects();
     renderBankSummary();
     renderQuestionList();
   }
@@ -3059,9 +3374,29 @@ $("#loginForm").addEventListener("submit", async (event) => {
   }
 });
 
-$("#logoutBtn").addEventListener("click", async () => {
+$("#globalSearch")?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  const value = event.currentTarget.value.trim();
+  if (!value) return;
+  const search = $("#searchInput");
+  if (search) search.value = value;
+  state.view = "bankSearch";
+  state.bankNavOpen = true;
+  state.bankPage = 1;
+  renderChrome();
+  renderFilters();
+  renderBankSummary();
+  renderQuestionList();
+  toast(`已在题库搜索：${value}`);
+});
+
+async function logout() {
   await api("/api/logout", { method: "POST" });
   location.reload();
+}
+
+$$("[data-logout]").forEach((button) => {
+  button.addEventListener("click", () => logout().catch((error) => toast(error.message)));
 });
 
 $("#refreshBtn")?.addEventListener("click", async () => {

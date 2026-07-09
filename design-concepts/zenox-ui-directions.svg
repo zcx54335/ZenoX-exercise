@@ -1,0 +1,239 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1320" viewBox="0 0 1920 1320" fill="none">
+  <defs>
+    <style>
+      .title{font:700 34px "Microsoft YaHei","Segoe UI",sans-serif;fill:#172033}
+      .subtitle{font:500 18px "Microsoft YaHei","Segoe UI",sans-serif;fill:#5f6f86}
+      .label{font:700 18px "Microsoft YaHei","Segoe UI",sans-serif;fill:#172033}
+      .small{font:500 13px "Microsoft YaHei","Segoe UI",sans-serif;fill:#69778c}
+      .tiny{font:600 11px "Microsoft YaHei","Segoe UI",sans-serif;fill:#7a879a}
+      .white{fill:#fff}
+      .muted{fill:#6c7a91}
+      .nav{font:600 12px "Microsoft YaHei","Segoe UI",sans-serif;fill:#b7c4d8}
+      .navActive{font:700 12px "Microsoft YaHei","Segoe UI",sans-serif;fill:#fff}
+      .screen{filter:url(#softShadow)}
+    </style>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#263248" flood-opacity=".12"/>
+    </filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="1920" y2="1320">
+      <stop stop-color="#f6f8fc"/>
+      <stop offset="1" stop-color="#edf2f8"/>
+    </linearGradient>
+    <linearGradient id="navA" x1="0" y1="0" x2="0" y2="365">
+      <stop stop-color="#07172b"/>
+      <stop offset="1" stop-color="#0b213b"/>
+    </linearGradient>
+    <linearGradient id="navB" x1="0" y1="0" x2="0" y2="365">
+      <stop stop-color="#09111f"/>
+      <stop offset="1" stop-color="#141b2b"/>
+    </linearGradient>
+    <linearGradient id="navC" x1="0" y1="0" x2="0" y2="365">
+      <stop stop-color="#122033"/>
+      <stop offset="1" stop-color="#172c45"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1920" height="1320" fill="url(#bg)"/>
+  <text x="80" y="82" class="title">ZenoX 界面设计方向稿</text>
+  <text x="80" y="118" class="subtitle">先看整体气质、宽屏布局和工作流密度。选定方向后再落到真实 HTML / CSS。</text>
+
+  <!-- Direction A -->
+  <g transform="translate(80 170)">
+    <text x="0" y="0" class="label">A. 高级白色专业控制台</text>
+    <text x="0" y="28" class="small">适合正式 SaaS 上线：可信、清楚、耐看，重点解决你大屏不能铺满的问题。</text>
+    <rect y="58" width="1760" height="330" rx="18" fill="#ffffff" class="screen"/>
+    <rect y="58" width="178" height="330" rx="18" fill="url(#navA)"/>
+    <rect x="160" y="58" width="18" height="330" fill="#fff"/>
+    <rect x="22" y="82" width="30" height="30" rx="8" fill="#1d6bff"/>
+    <text x="31" y="103" font-family="Segoe UI" font-size="17" font-weight="800" fill="#fff">Z</text>
+    <text x="62" y="96" font-family="Segoe UI,Microsoft YaHei" font-size="13" font-weight="800" fill="#fff">ZenoX</text>
+    <text x="62" y="114" class="tiny" fill="#8da7c5">智能题库 SaaS</text>
+    <rect x="16" y="152" width="146" height="31" rx="8" fill="#132c4a"/>
+    <text x="35" y="172" class="nav">资料解析</text>
+    <rect x="16" y="192" width="146" height="31" rx="8" fill="#1d6bff"/>
+    <text x="35" y="212" class="navActive">题库搜索</text>
+    <text x="35" y="254" class="nav">上传题库</text>
+    <text x="35" y="294" class="nav">智能组卷</text>
+    <text x="35" y="334" class="nav">学生画像</text>
+
+    <rect x="205" y="86" width="1495" height="48" rx="0" fill="#fff"/>
+    <text x="205" y="104" class="tiny" fill="#1d6bff">题库管理</text>
+    <text x="205" y="128" font-family="Microsoft YaHei,Segoe UI" font-size="24" font-weight="800" fill="#172033">题库搜索</text>
+    <rect x="1488" y="92" width="90" height="30" rx="8" fill="#fff" stroke="#d9e1ee"/>
+    <text x="1512" y="112" class="tiny" fill="#40516b">清空选择</text>
+    <rect x="1588" y="92" width="112" height="30" rx="8" fill="#1d6bff"/>
+    <text x="1614" y="112" class="tiny" fill="#fff">生成作业</text>
+
+    <rect x="205" y="154" width="1495" height="80" rx="12" fill="#f8fbff" stroke="#d8e4f2"/>
+    <rect x="225" y="178" width="690" height="34" rx="8" fill="#fff" stroke="#cbd8e8"/>
+    <text x="245" y="200" class="small" fill="#2b6bff">搜索  输入题干、知识点或章节</text>
+    <g transform="translate(935 172)">
+      <rect width="170" height="46" rx="10" fill="#fff" stroke="#d8e4f2"/>
+      <text x="16" y="22" font-family="Segoe UI" font-size="18" font-weight="800" fill="#172033">128</text>
+      <text x="16" y="38" class="tiny">当前结果</text>
+      <circle cx="150" cy="14" r="4" fill="#20b486"/>
+    </g>
+    <g transform="translate(1120 172)">
+      <rect width="170" height="46" rx="10" fill="#fff" stroke="#d8e4f2"/>
+      <text x="16" y="22" font-family="Segoe UI" font-size="18" font-weight="800" fill="#172033">3,420</text>
+      <text x="16" y="38" class="tiny">题库总量</text>
+      <circle cx="150" cy="14" r="4" fill="#20b486"/>
+    </g>
+    <g transform="translate(1305 172)">
+      <rect width="170" height="46" rx="10" fill="#fff" stroke="#d8e4f2"/>
+      <text x="16" y="22" font-family="Segoe UI" font-size="18" font-weight="800" fill="#172033">42</text>
+      <text x="16" y="38" class="tiny">已选题目</text>
+      <circle cx="150" cy="14" r="4" fill="#20b486"/>
+    </g>
+    <g transform="translate(1490 172)">
+      <rect width="170" height="46" rx="10" fill="#fff" stroke="#d8e4f2"/>
+      <text x="16" y="22" font-family="Segoe UI" font-size="18" font-weight="800" fill="#172033">91%</text>
+      <text x="16" y="38" class="tiny">质检通过</text>
+      <circle cx="150" cy="14" r="4" fill="#20b486"/>
+    </g>
+
+    <rect x="205" y="248" width="1495" height="54" rx="12" fill="#fff" stroke="#d8e4f2"/>
+    <rect x="225" y="264" width="190" height="24" rx="6" fill="#f7f9fc" stroke="#d6dfeb"/>
+    <text x="240" y="281" class="tiny" fill="#263248">全部科目</text>
+    <rect x="430" y="264" width="190" height="24" rx="6" fill="#f7f9fc" stroke="#d6dfeb"/>
+    <text x="445" y="281" class="tiny" fill="#263248">全部学段</text>
+    <rect x="635" y="264" width="190" height="24" rx="6" fill="#f7f9fc" stroke="#d6dfeb"/>
+    <text x="650" y="281" class="tiny" fill="#263248">全部难度</text>
+    <rect x="840" y="264" width="190" height="24" rx="6" fill="#f7f9fc" stroke="#d6dfeb"/>
+    <text x="855" y="281" class="tiny" fill="#263248">全部题型</text>
+    <rect x="1045" y="264" width="230" height="24" rx="6" fill="#f7f9fc" stroke="#d6dfeb"/>
+    <text x="1060" y="281" class="tiny" fill="#263248">全部知识点</text>
+
+    <g transform="translate(205 318)">
+      <rect width="970" height="52" rx="10" fill="#fff" stroke="#d8e4f2"/>
+      <text x="20" y="24" class="small" fill="#172033">一次函数与图像性质 · 选择题 · 提高</text>
+      <text x="20" y="42" class="tiny">已入库 · 有解析 · 题库相似题 6</text>
+      <rect x="870" y="16" width="74" height="24" rx="12" fill="#edf6ff"/>
+      <text x="891" y="32" class="tiny" fill="#1d6bff">加入</text>
+    </g>
+    <g transform="translate(1195 318)">
+      <rect width="505" height="52" rx="10" fill="#f8fbff" stroke="#d8e4f2"/>
+      <text x="18" y="24" class="small" fill="#172033">作业篮</text>
+      <text x="18" y="42" class="tiny">题库题 26 · 待审核 8 · AI 生成 8</text>
+      <rect x="390" y="14" width="88" height="26" rx="8" fill="#1d6bff"/>
+      <text x="414" y="32" class="tiny" fill="#fff">预览</text>
+    </g>
+  </g>
+
+  <!-- Direction B -->
+  <g transform="translate(80 545)">
+    <text x="0" y="0" class="label">B. 深色智能审核工作台</text>
+    <text x="0" y="28" class="small">适合重点强化 AI、OCR、待审核：沉浸、科技感强，但仍然是可长期工作的后台界面。</text>
+    <rect y="58" width="1760" height="330" rx="18" fill="#0c111d" class="screen"/>
+    <rect y="58" width="178" height="330" rx="18" fill="url(#navB)"/>
+    <rect x="160" y="58" width="18" height="330" fill="#0c111d"/>
+    <rect x="22" y="82" width="30" height="30" rx="8" fill="#58d6b4"/>
+    <text x="31" y="103" font-family="Segoe UI" font-size="17" font-weight="800" fill="#07111e">Z</text>
+    <text x="62" y="96" font-family="Segoe UI,Microsoft YaHei" font-size="13" font-weight="800" fill="#fff">ZenoX</text>
+    <text x="62" y="114" class="tiny" fill="#748093">AI 题库引擎</text>
+    <rect x="16" y="152" width="146" height="31" rx="8" fill="#1a2435"/>
+    <text x="35" y="172" class="navActive">资料解析</text>
+    <text x="35" y="212" class="nav">题库搜索</text>
+    <text x="35" y="254" class="nav">智能组卷</text>
+    <text x="35" y="294" class="nav">学生画像</text>
+    <text x="35" y="334" class="nav">系统设置</text>
+
+    <text x="205" y="104" class="tiny" fill="#58d6b4">资料入库</text>
+    <text x="205" y="128" font-family="Microsoft YaHei,Segoe UI" font-size="24" font-weight="800" fill="#f7fbff">资料解析与审核</text>
+    <rect x="1490" y="92" width="100" height="30" rx="8" fill="#151d2b" stroke="#263248"/>
+    <text x="1515" y="112" class="tiny" fill="#dce6f5">分析诊断</text>
+    <rect x="1600" y="92" width="100" height="30" rx="8" fill="#58d6b4"/>
+    <text x="1627" y="112" class="tiny" fill="#07111e">开始审核</text>
+
+    <rect x="205" y="154" width="380" height="198" rx="12" fill="#121a28" stroke="#263248"/>
+    <text x="230" y="188" class="small" fill="#e8eef7">上传资料</text>
+    <rect x="230" y="210" width="330" height="88" rx="10" fill="#0f1623" stroke="#2d3a4e" stroke-dasharray="6 5"/>
+    <text x="296" y="251" class="small" fill="#92a0b5">PDF / 图片 / Word 拖到这里</text>
+    <rect x="230" y="315" width="160" height="24" rx="7" fill="#58d6b4"/>
+    <text x="280" y="332" class="tiny" fill="#07111e">上传资料</text>
+    <rect x="402" y="315" width="158" height="24" rx="7" fill="#182235" stroke="#2d3a4e"/>
+    <text x="448" y="332" class="tiny" fill="#b7c4d8">选择页码</text>
+
+    <rect x="610" y="154" width="520" height="198" rx="12" fill="#121a28" stroke="#263248"/>
+    <text x="635" y="188" class="small" fill="#e8eef7">待审核队列</text>
+    <rect x="635" y="207" width="470" height="42" rx="9" fill="#182235"/>
+    <text x="655" y="232" class="tiny" fill="#dce6f5">第 3 页 · 函数图像综合题</text>
+    <rect x="1012" y="217" width="70" height="20" rx="10" fill="#243e38"/>
+    <text x="1028" y="232" class="tiny" fill="#58d6b4">通过</text>
+    <rect x="635" y="262" width="470" height="42" rx="9" fill="#0f1623" stroke="#2d3a4e"/>
+    <text x="655" y="287" class="tiny" fill="#dce6f5">第 4 页 · 几何配图题</text>
+    <rect x="1002" y="272" width="80" height="20" rx="10" fill="#40372a"/>
+    <text x="1016" y="287" class="tiny" fill="#ffc76b">需核对</text>
+    <rect x="635" y="317" width="470" height="18" rx="9" fill="#0f1623"/>
+
+    <rect x="1155" y="154" width="545" height="198" rx="12" fill="#121a28" stroke="#263248"/>
+    <text x="1180" y="188" class="small" fill="#e8eef7">本题工作区</text>
+    <rect x="1180" y="207" width="190" height="112" rx="8" fill="#0f1623" stroke="#2d3a4e"/>
+    <text x="1222" y="264" class="tiny" fill="#748093">原页截图</text>
+    <text x="1395" y="223" class="tiny" fill="#58d6b4">AI 查题 4</text>
+    <text x="1395" y="250" class="tiny" fill="#58d6b4">题库相似 6</text>
+    <text x="1395" y="277" class="tiny" fill="#58d6b4">AI 生题 3</text>
+    <rect x="1395" y="300" width="120" height="26" rx="8" fill="#58d6b4"/>
+    <text x="1428" y="318" class="tiny" fill="#07111e">入库本题</text>
+    <rect x="1525" y="300" width="120" height="26" rx="8" fill="#182235" stroke="#2d3a4e"/>
+    <text x="1553" y="318" class="tiny" fill="#dce6f5">加入组卷</text>
+  </g>
+
+  <!-- Direction C -->
+  <g transform="translate(80 920)">
+    <text x="0" y="0" class="label">C. 轻量高端教研台</text>
+    <text x="0" y="28" class="small">适合你想要“高端大气好看”：更轻、更有品牌感，首页就是可操作的任务总览。</text>
+    <rect y="58" width="1760" height="330" rx="18" fill="#fbfcff" class="screen"/>
+    <rect y="58" width="178" height="330" rx="18" fill="url(#navC)"/>
+    <rect x="160" y="58" width="18" height="330" fill="#fbfcff"/>
+    <rect x="22" y="82" width="30" height="30" rx="8" fill="#2d7cff"/>
+    <text x="31" y="103" font-family="Segoe UI" font-size="17" font-weight="800" fill="#fff">Z</text>
+    <text x="62" y="96" font-family="Segoe UI,Microsoft YaHei" font-size="13" font-weight="800" fill="#fff">ZenoX</text>
+    <text x="62" y="114" class="tiny" fill="#a8bdd8">教研工作台</text>
+    <text x="35" y="172" class="nav">资料解析</text>
+    <text x="35" y="212" class="nav">题库管理</text>
+    <rect x="16" y="234" width="146" height="31" rx="8" fill="#2d7cff"/>
+    <text x="35" y="254" class="navActive">智能组卷</text>
+    <text x="35" y="294" class="nav">学生画像</text>
+    <text x="35" y="334" class="nav">系统设置</text>
+
+    <text x="205" y="104" class="tiny" fill="#2d7cff">工作台</text>
+    <text x="205" y="130" font-family="Microsoft YaHei,Segoe UI" font-size="25" font-weight="800" fill="#172033">今天先处理这些</text>
+    <rect x="1280" y="92" width="420" height="38" rx="10" fill="#fff" stroke="#d9e1ee"/>
+    <text x="1302" y="116" class="small" fill="#6c7a91">搜索题目、学生、作业或上传资料</text>
+
+    <rect x="205" y="158" width="350" height="194" rx="12" fill="#fff" stroke="#dce4ef"/>
+    <text x="230" y="190" class="small" fill="#172033">待审核</text>
+    <text x="230" y="232" font-family="Segoe UI" font-size="48" font-weight="800" fill="#172033">38</text>
+    <text x="230" y="258" class="tiny">来自 5 份新上传资料</text>
+    <rect x="230" y="300" width="120" height="28" rx="8" fill="#2d7cff"/>
+    <text x="262" y="319" class="tiny" fill="#fff">去审核</text>
+    <rect x="365" y="300" width="120" height="28" rx="8" fill="#f3f6fa" stroke="#d9e1ee"/>
+    <text x="391" y="319" class="tiny" fill="#40516b">看诊断</text>
+
+    <rect x="580" y="158" width="350" height="194" rx="12" fill="#fff" stroke="#dce4ef"/>
+    <text x="605" y="190" class="small" fill="#172033">本周作业</text>
+    <text x="605" y="232" font-family="Segoe UI" font-size="48" font-weight="800" fill="#172033">12</text>
+    <text x="605" y="258" class="tiny">3 份等待导出，2 份需要补答案</text>
+    <rect x="605" y="300" width="120" height="28" rx="8" fill="#172033"/>
+    <text x="637" y="319" class="tiny" fill="#fff">继续组卷</text>
+
+    <rect x="955" y="158" width="350" height="194" rx="12" fill="#fff" stroke="#dce4ef"/>
+    <text x="980" y="190" class="small" fill="#172033">学生薄弱点</text>
+    <text x="980" y="232" font-family="Segoe UI" font-size="48" font-weight="800" fill="#172033">7</text>
+    <text x="980" y="258" class="tiny">一次函数、几何证明、阅读理解</text>
+    <rect x="980" y="300" width="120" height="28" rx="8" fill="#eaf3ff"/>
+    <text x="1005" y="319" class="tiny" fill="#2d7cff">生成练习</text>
+
+    <rect x="1330" y="158" width="370" height="194" rx="12" fill="#172033"/>
+    <text x="1355" y="190" class="small" fill="#fff">快速开始</text>
+    <rect x="1355" y="212" width="142" height="32" rx="8" fill="#2d7cff"/>
+    <text x="1394" y="233" class="tiny" fill="#fff">上传资料</text>
+    <rect x="1512" y="212" width="142" height="32" rx="8" fill="#26364d"/>
+    <text x="1550" y="233" class="tiny" fill="#dce6f5">搜索题库</text>
+    <rect x="1355" y="260" width="299" height="1" fill="#2d3c52"/>
+    <text x="1355" y="292" class="tiny" fill="#aab7c9">AI 用量正常 · PostgreSQL 已连接 · 今日同步成功</text>
+    <rect x="1355" y="310" width="299" height="8" rx="4" fill="#26364d"/>
+    <rect x="1355" y="310" width="202" height="8" rx="4" fill="#58d6b4"/>
+  </g>
+</svg>

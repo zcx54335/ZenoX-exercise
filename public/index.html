@@ -4,17 +4,26 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ZenoX 题库工作台</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=20260708-command-center-3" />
   </head>
   <body>
     <main id="login" class="login-shell hidden">
       <section class="login-panel">
-        <div>
+        <div class="login-copy">
           <p class="eyebrow">ZenoX Exercise</p>
           <h1>家教题库工作台</h1>
           <p class="muted">整理题目、分类、生成作业、记录错题，一条线完成。</p>
+          <div class="login-highlights" aria-label="ZenoX 核心能力">
+            <span>AI 解析资料</span>
+            <span>题库审核入库</span>
+            <span>智能组卷导出</span>
+          </div>
         </div>
-        <form id="loginForm" class="stack">
+        <form id="loginForm" class="login-card stack">
+          <div class="login-card-head">
+            <strong>登录工作台</strong>
+            <span>云端题库与教研生产线</span>
+          </div>
           <label>账号<input name="username" autocomplete="username" value="admin" /></label>
           <label>密码<input name="password" type="password" autocomplete="current-password" placeholder="请输入密码" /></label>
           <button class="primary" type="submit">登录</button>
@@ -33,7 +42,8 @@
           </div>
         </div>
         <nav class="nav">
-          <button data-view="import" data-icon="↥" class="active">资料解析</button>
+          <button data-view="dashboard" data-icon="●" class="active">今日工作台</button>
+          <button data-view="import" data-icon="↥">资料解析</button>
           <div class="nav-group" data-nav-group="bank">
             <button class="nav-parent" type="button" data-icon="▦" aria-expanded="false">题库管理</button>
             <div class="nav-children">
@@ -47,19 +57,144 @@
         </nav>
         <div class="sidebar-footer">
           <div id="topStatus" class="top-status sidebar-plan"></div>
-          <button id="logoutBtn" class="ghost sidebar-logout">退出登录</button>
+          <button id="logoutBtn" class="ghost sidebar-logout" data-logout type="button">退出登录</button>
         </div>
       </aside>
 
       <section class="workspace">
         <header class="topbar">
           <div>
-            <p class="eyebrow" id="viewEyebrow">资料入库</p>
-            <h2 id="viewTitle">资料解析</h2>
+            <p class="eyebrow" id="viewEyebrow">Command Center</p>
+            <h2 id="viewTitle">今日工作台</h2>
+          </div>
+          <div class="command-bar" role="search">
+            <span class="command-search-icon">⌕</span>
+            <input id="globalSearch" placeholder="搜索题目、学生、作业或上传资料" aria-label="全局搜索" />
+          </div>
+          <div class="topbar-actions">
+            <button class="primary" type="button" data-view="import">上传资料</button>
+            <button class="ghost" type="button" data-view="settings">设置</button>
+            <button id="topLogoutBtn" class="ghost top-logout" data-logout type="button">退出登录</button>
           </div>
         </header>
 
-        <section id="import" class="view active">
+        <section id="dashboard" class="view active command-center">
+          <section class="hero-strip">
+            <div>
+              <p class="eyebrow">ZenoX Command Center</p>
+              <h1>今天先把题库生产线跑顺</h1>
+              <p class="muted">上传资料、审核题目、补齐知识点、生成作业，一屏完成当天教研任务。</p>
+            </div>
+            <div class="hero-actions">
+              <button class="primary" type="button" data-view="import">上传资料</button>
+              <button class="ghost" type="button" data-view="bankSearch">搜索题库</button>
+            </div>
+          </section>
+
+          <section class="command-metrics metrics">
+            <article class="metric-card">
+              <span>待审核题目</span>
+              <strong id="metricPending">0</strong>
+              <p id="metricPendingNote">等待 AI 分析结果</p>
+            </article>
+            <article class="metric-card">
+              <span>题库总量</span>
+              <strong id="metricQuestions">0</strong>
+              <p id="metricQuestionNote">正式入库题目</p>
+            </article>
+            <article class="metric-card">
+              <span>本周作业</span>
+              <strong id="metricAssignments">0</strong>
+              <p id="metricAssignmentNote">保存后可再次载入</p>
+            </article>
+            <article class="metric-card">
+              <span>学生薄弱点</span>
+              <strong id="metricMistakes">0</strong>
+              <p id="metricMistakeNote">错题会形成画像</p>
+            </article>
+          </section>
+
+          <div class="command-grid">
+            <section class="panel command-panel review-command-card">
+              <div class="section-head">
+                <div>
+                  <h3>待审核资料</h3>
+                  <p class="muted">按资料组织待审核题，先处理质量风险最高的内容。</p>
+                </div>
+                <button class="ghost compact" type="button" data-view="import">去审核</button>
+              </div>
+              <div id="dashboardUploadList" class="command-list"></div>
+            </section>
+
+            <section class="panel command-panel current-review-card">
+              <div class="section-head">
+                <div>
+                  <h3>当前题目审核</h3>
+                  <p class="muted">题干、配图、答案和知识点统一在这里收口。</p>
+                </div>
+              </div>
+              <div id="dashboardReviewFocus" class="review-focus"></div>
+            </section>
+
+            <section class="panel command-panel ai-command-card">
+              <div class="section-head">
+                <div>
+                  <h3>ZenoX AI</h3>
+                  <p class="muted">只在关键节点给建议，不打断老师工作流。</p>
+                </div>
+              </div>
+              <div id="dashboardAiList" class="ai-suggestions"></div>
+              <div class="row-actions">
+                <button class="primary" type="button" data-view="import">处理建议</button>
+                <button class="ghost" type="button" data-view="settings">查看状态</button>
+              </div>
+            </section>
+
+            <section class="panel command-panel bank-command-card">
+              <div class="section-head">
+                <div>
+                  <h3>题库搜索</h3>
+                  <p class="muted">宽屏下筛选、列表、详情可以并排工作。</p>
+                </div>
+                <button class="ghost compact" type="button" data-view="bankSearch">打开题库</button>
+              </div>
+              <div id="dashboardQuestionList" class="command-list"></div>
+            </section>
+
+            <section class="panel command-panel student-command-card">
+              <div class="section-head">
+                <div>
+                  <h3>学生画像</h3>
+                  <p class="muted">错题回流后，组卷建议会更准确。</p>
+                </div>
+                <button class="ghost compact" type="button" data-view="students">查看学生</button>
+              </div>
+              <div id="dashboardStudentList" class="command-list"></div>
+            </section>
+
+            <section class="panel command-panel status-command-card">
+              <div class="section-head">
+                <div>
+                  <h3>系统状态</h3>
+                  <p class="muted">上线后给机构管理员看的可靠性信息。</p>
+                </div>
+              </div>
+              <div id="dashboardStatusList" class="status-list"></div>
+            </section>
+          </div>
+
+          <section class="panel command-panel activity-command-card">
+            <div class="section-head">
+              <div>
+                <h3>最近动态</h3>
+                <p class="muted">上传、审核、组卷和设置变更会在这里留下轨迹。</p>
+              </div>
+            </div>
+            <div id="activityList" class="activity command-activity"></div>
+          </section>
+        </section>
+
+        <section id="import" class="view">
           <details class="feature-guide guide-danger">
             <summary>
               <span>操作提示</span>
@@ -141,24 +276,20 @@
             </div>
             <div class="bank-search-hero">
               <div class="bank-search-box">
-                <span>搜索</span>
-                <input id="searchInput" placeholder="输入题干、知识点或章节" />
+                <div class="bank-search-input-row">
+                  <span>搜索</span>
+                  <input id="searchInput" placeholder="输入题干、知识点或章节" />
+                  <button id="clearBankFiltersBtn" class="ghost compact" type="button">清空筛选</button>
+                </div>
+                <div class="filters bank-inline-filters">
+                  <select id="filterSubject"><option value="">全部科目</option></select>
+                  <select id="filterStage"><option value="">全部学段</option><option>小学</option><option>初中</option></select>
+                  <select id="filterLevel"><option value="">全部难度</option><option>基础</option><option>提高</option><option>压轴</option></select>
+                  <select id="filterType"><option value="">全部题型</option></select>
+                  <select id="filterKnowledge"><option value="">全部知识点</option></select>
+                </div>
               </div>
               <div id="bankSummary" class="bank-summary"></div>
-            </div>
-            <div class="bank-filter-panel">
-              <div class="bank-panel-title">
-                <strong>筛选</strong>
-                <span>默认显示全部题，可按需要缩小范围。</span>
-                <button id="clearBankFiltersBtn" class="ghost compact" type="button">清空筛选</button>
-              </div>
-              <div class="filters">
-                <select id="filterSubject"><option value="">全部科目</option></select>
-                <select id="filterStage"><option value="">全部学段</option><option>小学</option><option>初中</option></select>
-                <select id="filterLevel"><option value="">全部难度</option><option>基础</option><option>提高</option><option>压轴</option></select>
-                <select id="filterType"><option value="">全部题型</option></select>
-                <select id="filterKnowledge"><option value="">全部知识点</option></select>
-              </div>
             </div>
             <div class="bank-browser-layout">
               <div class="bank-results">
@@ -521,6 +652,6 @@
       </div>
     </div>
     <script src="/app-config.js"></script>
-    <script src="/app.js"></script>
+    <script src="/app.js?v=20260708-command-center-3"></script>
   </body>
 </html>
